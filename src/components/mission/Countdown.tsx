@@ -2,49 +2,17 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useMission } from "@/lib/mission/store";
 
-interface Parts {
-  years: number;
-  months: number;
-  days: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  totalMs: number;
-}
-
-function diff(target: number, now: number): Parts {
-  let ms = Math.max(0, target - now);
-  const totalMs = ms;
-  const SEC = 1000;
-  const MIN = 60 * SEC;
-  const HR = 60 * MIN;
-  const DAY = 24 * HR;
-  // approximate years/months from days
-  const totalDays = Math.floor(ms / DAY);
-  const years = Math.floor(totalDays / 365);
-  const months = Math.floor((totalDays - years * 365) / 30);
-  const days = totalDays - years * 365 - months * 30;
-  ms -= totalDays * DAY;
-  const hours = Math.floor(ms / HR);
-  ms -= hours * HR;
-  const minutes = Math.floor(ms / MIN);
-  ms -= minutes * MIN;
-  const seconds = Math.floor(ms / SEC);
-  return { years, months, days, hours, minutes, seconds, totalMs };
-}
-
-function Cell({ label, value, big }: { label: string; value: number; big?: boolean }) {
-  const v = value.toString().padStart(2, "0");
+function Cell({ value, label, mono }: { value: string; label: string; mono?: boolean }) {
   return (
     <div className="flex flex-col items-center">
       <div
-        className={`text-display ${
-          big ? "text-[18vw] md:text-[10vw] lg:text-[9rem]" : "text-5xl md:text-7xl"
-        } leading-none text-foreground tabular-nums`}
+        className={`text-display tabular-nums text-foreground ${
+          mono ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
+        }`}
       >
-        {v}
+        {value}
       </div>
-      <div className="mt-2 text-[10px] md:text-xs uppercase tracking-[0.3em] text-muted-foreground">
+      <div className="mt-1 text-[9px] md:text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
         {label}
       </div>
     </div>
@@ -62,74 +30,161 @@ export function Countdown() {
     return () => clearInterval(t);
   }, []);
 
-  const p = diff(target, now);
   const totalRange = Math.max(1, target - start);
   const consumed = Math.max(0, Math.min(1, (now - start) / totalRange));
   const remaining = 1 - consumed;
 
+  const ms = Math.max(0, target - now);
+  const DAY = 24 * 3600 * 1000;
+  const totalDays = Math.floor(ms / DAY);
+  const totalHours = Math.floor(ms / (3600 * 1000));
+  const totalWeeks = Math.floor(totalDays / 7);
+  const totalMonths = Math.floor(totalDays / 30.4375);
+  const totalYears = (totalDays / 365.25);
+  const hh = Math.floor((ms % DAY) / 3600000);
+  const mm = Math.floor((ms % 3600000) / 60000);
+  const ss = Math.floor((ms % 60000) / 1000);
+
+  // Ring geometry
+  const size = 540;
+  const stroke = 2;
+  const r = (size - stroke) / 2 - 8;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - remaining);
+
   return (
     <section className="relative min-h-screen w-full overflow-hidden grain">
+      {/* Aurora glow */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[60vh] w-[80vw] rounded-full bg-white/[0.025] blur-3xl" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[80vh] w-[80vh] rounded-full bg-[radial-gradient(circle_at_center,rgba(80,120,255,0.10),transparent_60%)] blur-2xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[55vh] w-[55vh] rounded-full bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.06),transparent_60%)] blur-2xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-6 py-10">
+      <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-6 py-8">
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="h-2 w-2 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.6)]" />
-            <span className="text-xs uppercase tracking-[0.4em] text-muted-foreground">
-              Mission 2029
+            <div className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,0.85)] animate-pulse" />
+            <span className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground">
+              Mission 2029 · Command
             </span>
           </div>
-          <div className="text-xs uppercase tracking-[0.3em] text-muted-foreground">
-            Target · 10 Jun 2029
+          <div className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+            T-Minus · {totalDays.toLocaleString()} d
           </div>
         </header>
 
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="flex-1 flex flex-col items-center justify-center text-center"
+          className="flex-1 flex flex-col items-center justify-center text-center relative"
         >
-          <div className="text-xs uppercase tracking-[0.5em] text-muted-foreground mb-6">
-            Time Remaining
+          {/* Circular HUD */}
+          <div className="relative" style={{ width: size, height: size, maxWidth: "92vw" }}>
+            <svg
+              viewBox={`0 0 ${size} ${size}`}
+              className="absolute inset-0 w-full h-full -rotate-90"
+            >
+              {/* outer faint ring */}
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth={stroke}
+                fill="none"
+              />
+              {/* progress ring */}
+              <motion.circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r}
+                stroke="white"
+                strokeWidth={stroke}
+                strokeLinecap="round"
+                fill="none"
+                strokeDasharray={c}
+                initial={{ strokeDashoffset: c }}
+                animate={{ strokeDashoffset: off }}
+                transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
+                style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.5))" }}
+              />
+              {/* tick marks */}
+              {Array.from({ length: 60 }).map((_, i) => {
+                const angle = (i / 60) * Math.PI * 2;
+                const x1 = size / 2 + Math.cos(angle) * (r - 14);
+                const y1 = size / 2 + Math.sin(angle) * (r - 14);
+                const x2 = size / 2 + Math.cos(angle) * (r - (i % 5 === 0 ? 24 : 18));
+                const y2 = size / 2 + Math.sin(angle) * (r - (i % 5 === 0 ? 24 : 18));
+                return (
+                  <line
+                    key={i}
+                    x1={x1}
+                    y1={y1}
+                    x2={x2}
+                    y2={y2}
+                    stroke="rgba(255,255,255,0.18)"
+                    strokeWidth={i % 5 === 0 ? 1.2 : 0.6}
+                  />
+                );
+              })}
+            </svg>
+
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground mb-4">
+                Mission 2029
+              </div>
+              <motion.div
+                key={totalDays}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6 }}
+                className="text-display text-[28vw] md:text-[14rem] leading-[0.85] text-foreground tabular-nums"
+                style={{ textShadow: "0 0 60px rgba(255,255,255,0.18)" }}
+              >
+                {totalDays.toLocaleString()}
+              </motion.div>
+              <div className="mt-2 text-[11px] uppercase tracking-[0.5em] text-muted-foreground">
+                Days Remaining
+              </div>
+
+              <div className="mt-8 flex items-center gap-6 md:gap-10">
+                <Cell value={totalWeeks.toLocaleString()} label="Weeks" />
+                <span className="h-6 w-px bg-white/10" />
+                <Cell value={totalMonths.toLocaleString()} label="Months" />
+                <span className="h-6 w-px bg-white/10" />
+                <Cell value={totalYears.toFixed(1)} label="Years" />
+                <span className="hidden md:block h-6 w-px bg-white/10" />
+                <div className="hidden md:block">
+                  <Cell value={totalHours.toLocaleString()} label="Hours" />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-end justify-center gap-6 md:gap-10">
-            <Cell label="Years" value={p.years} big />
-            <div className="text-display text-7xl md:text-9xl text-muted-foreground/40 pb-4">·</div>
-            <Cell label="Months" value={p.months} big />
+          {/* live HH:MM:SS underline */}
+          <div className="mt-8 flex items-center gap-3 text-[11px] uppercase tracking-[0.4em] text-muted-foreground">
+            <span>Live</span>
+            <span className="text-foreground tabular-nums text-base">
+              {String(hh).padStart(2, "0")}:{String(mm).padStart(2, "0")}:
+              {String(ss).padStart(2, "0")}
+            </span>
+            <span>until 10 Jun 2029</span>
           </div>
-
-          <div className="mt-10 grid grid-cols-4 gap-3 md:gap-10 w-full max-w-3xl">
-            <Cell label="Days" value={p.days} />
-            <Cell label="Hours" value={p.hours} />
-            <Cell label="Minutes" value={p.minutes} />
-            <Cell label="Seconds" value={p.seconds} />
-          </div>
-
-          <p className="mt-12 max-w-xl text-sm md:text-base text-muted-foreground italic">
-            "Every second is either building your future or destroying it."
-          </p>
         </motion.div>
 
-        <div className="mt-10">
-          <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-muted-foreground mb-3">
-            <span>Mission Progress</span>
-            <span>{(consumed * 100).toFixed(4)}% consumed</span>
+        <div className="mt-6">
+          <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.4em] text-muted-foreground mb-2">
+            <span>Life · Mission Progress</span>
+            <span className="tabular-nums">{(consumed * 100).toFixed(3)}% consumed</span>
           </div>
-          <div className="relative h-[3px] w-full overflow-hidden rounded-full bg-white/5">
+          <div className="relative h-[2px] w-full overflow-hidden rounded-full bg-white/5">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${consumed * 100}%` }}
               transition={{ duration: 1.6, ease: [0.16, 1, 0.3, 1] }}
-              className="absolute inset-y-0 left-0 bg-white"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-white/70 to-white"
             />
-          </div>
-          <div className="mt-3 flex justify-between text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-            <span>Consumed {(consumed * 100).toFixed(2)}%</span>
-            <span>Remaining {(remaining * 100).toFixed(2)}%</span>
           </div>
         </div>
       </div>
