@@ -29,6 +29,43 @@ export interface DayEntry {
   dealsClosed: number;
   notes: string;
   tasks: Task[];
+  // v2 metrics
+  workoutDone?: boolean;
+  learningHours?: number;
+  readingMinutes?: number;
+  sleepHours?: number;
+  deepWorkHours?: number;
+  outreachSent?: number;
+}
+
+export interface Milestone {
+  id: string;
+  label: string;
+  targetRevenue: number;
+  targetDate: string; // ISO
+  done: boolean;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  xp: number;
+  xpPerLevel: number;
+}
+
+export interface VisionItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  tag: string;
+}
+
+export interface DailyMissionItem {
+  id: string;
+  label: string;
+  target: number;
+  unit: string; // e.g. "msgs", "hrs"
+  done: boolean;
 }
 
 export interface MissionState {
@@ -39,6 +76,7 @@ export interface MissionState {
   // Financial
   revenueTarget: number;
   currentRevenue: number;
+  monthlyRevenue: number;
   clientTarget: number;
   currentClients: number;
 
@@ -49,6 +87,14 @@ export interface MissionState {
 
   // Daily log
   days: Record<string, DayEntry>;
+
+  // v2
+  milestones: Milestone[];
+  skills: Skill[];
+  visions: VisionItem[];
+  dailyMission: DailyMissionItem[];
+  visitedCountries: string[]; // ISO codes or names
+  travelBucket: string[];
 
   // setters
   setField: <K extends keyof MissionState>(k: K, v: MissionState[K]) => void;
@@ -61,6 +107,14 @@ export interface MissionState {
   startTimer: (date: string, taskId: string) => void;
   pauseTimer: (date: string, taskId: string) => void;
   stopTimer: (date: string, taskId: string) => void;
+
+  upsertMilestone: (m: Milestone) => void;
+  removeMilestone: (id: string) => void;
+  addSkillXP: (id: string, xp: number) => void;
+  toggleCountry: (code: string) => void;
+  toggleDailyMission: (id: string) => void;
+  addVision: (v: Omit<VisionItem, "id">) => void;
+  removeVision: (id: string) => void;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -97,6 +151,7 @@ export const useMission = create<MissionState>()(
 
       revenueTarget: 100000,
       currentRevenue: 10000,
+      monthlyRevenue: 10000,
       clientTarget: 10,
       currentClients: 1,
 
@@ -105,6 +160,40 @@ export const useMission = create<MissionState>()(
       dealsClosed: 1,
 
       days: seedDays(),
+
+      milestones: [
+        { id: "m1", label: "₹1L / month", targetRevenue: 100000, targetDate: "2026-12-31", done: false },
+        { id: "m2", label: "₹10L / month", targetRevenue: 1000000, targetDate: "2028-02-01", done: false },
+        { id: "m3", label: "₹1 Cr / month", targetRevenue: 10000000, targetDate: "2029-06-10", done: false },
+      ],
+      skills: [
+        { id: "sales", name: "Sales", xp: 450, xpPerLevel: 1000 },
+        { id: "ai", name: "AI Automation", xp: 720, xpPerLevel: 1000 },
+        { id: "react", name: "React", xp: 1850, xpPerLevel: 1000 },
+        { id: "js", name: "JavaScript", xp: 2400, xpPerLevel: 1000 },
+        { id: "biz", name: "Business", xp: 300, xpPerLevel: 1000 },
+        { id: "marketing", name: "Marketing", xp: 220, xpPerLevel: 1000 },
+        { id: "leadership", name: "Leadership", xp: 150, xpPerLevel: 1000 },
+      ],
+      visions: [
+        { id: "v1", title: "₹1L / month", subtitle: "First proof of model", tag: "Revenue" },
+        { id: "v2", title: "₹10L / month", subtitle: "Scale the engine", tag: "Revenue" },
+        { id: "v3", title: "₹1Cr / month", subtitle: "Category leader", tag: "Revenue" },
+        { id: "v4", title: "World Tour", subtitle: "195 countries", tag: "Lifestyle" },
+        { id: "v5", title: "Dream Physique", subtitle: "Sub-12% body fat", tag: "Body" },
+        { id: "v6", title: "AI Empire", subtitle: "Autonomous products", tag: "Build" },
+        { id: "v7", title: "Financial Freedom", subtitle: "Sovereign capital", tag: "Freedom" },
+      ],
+      dailyMission: [
+        { id: "d1", label: "Outreach Messages", target: 20, unit: "msgs", done: false },
+        { id: "d2", label: "Follow Ups", target: 5, unit: "msgs", done: false },
+        { id: "d3", label: "Sales Calls", target: 1, unit: "call", done: false },
+        { id: "d4", label: "Workout", target: 1, unit: "session", done: false },
+        { id: "d5", label: "Deep Learning", target: 2, unit: "hrs", done: false },
+        { id: "d6", label: "Build Product", target: 3, unit: "hrs", done: false },
+      ],
+      visitedCountries: ["IN"],
+      travelBucket: ["JP", "US", "AE", "CH", "IS"],
 
       setField: (k, v) => set({ [k]: v } as any),
       patch: (p) => set(p),
@@ -181,6 +270,39 @@ export const useMission = create<MissionState>()(
           actualHours: +(totalMs / 3600000).toFixed(2),
         });
       },
+
+      upsertMilestone: (m) =>
+        set((s) => {
+          const idx = s.milestones.findIndex((x) => x.id === m.id);
+          const next = [...s.milestones];
+          if (idx >= 0) next[idx] = m;
+          else next.push(m);
+          return { milestones: next };
+        }),
+      removeMilestone: (id) =>
+        set((s) => ({ milestones: s.milestones.filter((m) => m.id !== id) })),
+      addSkillXP: (id, xp) =>
+        set((s) => ({
+          skills: s.skills.map((sk) => (sk.id === id ? { ...sk, xp: sk.xp + xp } : sk)),
+        })),
+      toggleCountry: (code) =>
+        set((s) => ({
+          visitedCountries: s.visitedCountries.includes(code)
+            ? s.visitedCountries.filter((c) => c !== code)
+            : [...s.visitedCountries, code],
+        })),
+      toggleDailyMission: (id) =>
+        set((s) => ({
+          dailyMission: s.dailyMission.map((d) =>
+            d.id === id ? { ...d, done: !d.done } : d,
+          ),
+        })),
+      addVision: (v) =>
+        set((s) => ({
+          visions: [...s.visions, { ...v, id: crypto.randomUUID() }],
+        })),
+      removeVision: (id) =>
+        set((s) => ({ visions: s.visions.filter((v) => v.id !== id) })),
     }),
     { name: "mission-2029" },
   ),

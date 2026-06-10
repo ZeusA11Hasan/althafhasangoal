@@ -4,6 +4,17 @@ import { Financial } from "@/components/mission/Financial";
 import { SalesChart } from "@/components/mission/SalesChart";
 import { Calendar } from "@/components/mission/Calendar";
 import { Productivity } from "@/components/mission/Productivity";
+import { Timeline } from "@/components/mission/Timeline";
+import { Metrics } from "@/components/mission/Metrics";
+import { Heatmap } from "@/components/mission/Heatmap";
+import { PaceEngine } from "@/components/mission/PaceEngine";
+import { WorldTour } from "@/components/mission/WorldTour";
+import { SkillTree } from "@/components/mission/SkillTree";
+import { DailyExecution } from "@/components/mission/DailyExecution";
+import { VisionBoard } from "@/components/mission/VisionBoard";
+import { WarMode } from "@/components/mission/WarMode";
+import { AICoach } from "@/components/mission/AICoach";
+import { Particles } from "@/components/mission/Particles";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -27,15 +38,28 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <main className="bg-background text-foreground">
-      <Countdown />
-      <Financial />
-      <SalesChart />
-      <Calendar />
-      <Productivity />
-      <footer className="px-6 py-12 text-center text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-        Mission 2029 · Built for the obsessed
-      </footer>
+    <main className="relative bg-background text-foreground">
+      <Particles />
+      <div className="relative z-10">
+        <Countdown />
+        <Timeline />
+        <Financial />
+        <PaceEngine />
+        <DailyExecution />
+        <Metrics />
+        <Productivity />
+        <Heatmap />
+        <SalesChart />
+        <Calendar />
+        <SkillTree />
+        <WorldTour />
+        <VisionBoard />
+        <footer className="px-6 py-12 text-center text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+          Mission 2029 · Built for the obsessed
+        </footer>
+      </div>
+      <WarMode />
+      <AICoach />
     </main>
   );
 }
