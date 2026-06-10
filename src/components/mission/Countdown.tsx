@@ -46,8 +46,8 @@ export function Countdown() {
   const ss = Math.floor((ms % 60000) / 1000);
 
   // Ring geometry
-  const size = 540;
-  const stroke = 2;
+  const size = 640;
+  const stroke = 2.5;
   const r = (size - stroke) / 2 - 8;
   const c = 2 * Math.PI * r;
   const off = c * (1 - remaining);
