@@ -46,8 +46,8 @@ export function Countdown() {
   const ss = Math.floor((ms % 60000) / 1000);
 
   // Ring geometry
-  const size = 540;
-  const stroke = 2;
+  const size = 640;
+  const stroke = 2.5;
   const r = (size - stroke) / 2 - 8;
   const c = 2 * Math.PI * r;
   const off = c * (1 - remaining);
@@ -148,16 +148,16 @@ export function Countdown() {
                 Days Remaining
               </div>
 
-              <div className="mt-8 flex items-center gap-6 md:gap-10">
+              <div className="mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-10">
                 <Cell value={totalWeeks.toLocaleString()} label="Weeks" />
-                <span className="h-6 w-px bg-white/10" />
+                <span className="hidden md:block h-6 w-px bg-white/10" />
                 <Cell value={totalMonths.toLocaleString()} label="Months" />
-                <span className="h-6 w-px bg-white/10" />
+                <span className="hidden md:block h-6 w-px bg-white/10" />
                 <Cell value={totalYears.toFixed(1)} label="Years" />
                 <span className="hidden md:block h-6 w-px bg-white/10" />
-                <div className="hidden md:block">
-                  <Cell value={totalHours.toLocaleString()} label="Hours" />
-                </div>
+                <Cell value={totalHours.toLocaleString()} label="Hours" />
+                <span className="hidden md:block h-6 w-px bg-white/10" />
+                <Cell value={String(ss).padStart(2, "0")} label="Seconds" mono />
               </div>
             </div>
           </div>
