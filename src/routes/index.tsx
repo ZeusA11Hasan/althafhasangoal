@@ -15,6 +15,7 @@ import { VisionBoard } from "@/components/mission/VisionBoard";
 import { WarMode } from "@/components/mission/WarMode";
 import { AICoach } from "@/components/mission/AICoach";
 import { Particles } from "@/components/mission/Particles";
+import { Kanban } from "@/components/mission/Kanban";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,15 +43,16 @@ function Index() {
       <Particles />
       <div className="relative z-10">
         <Countdown />
+        <DailyExecution />
         <Timeline />
         <Financial />
         <PaceEngine />
-        <DailyExecution />
         <Metrics />
         <Productivity />
         <Heatmap />
         <SalesChart />
         <Calendar />
+        <Kanban />
         <SkillTree />
         <WorldTour />
         <VisionBoard />
