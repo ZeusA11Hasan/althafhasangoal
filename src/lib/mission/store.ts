@@ -77,6 +77,7 @@ export interface MissionState {
   revenueTarget: number;
   currentRevenue: number;
   monthlyRevenue: number;
+  monthlyTarget: number;
   clientTarget: number;
   currentClients: number;
 
@@ -152,6 +153,7 @@ export const useMission = create<MissionState>()(
       revenueTarget: 100000,
       currentRevenue: 10000,
       monthlyRevenue: 10000,
+      monthlyTarget: 10000000,
       clientTarget: 10,
       currentClients: 1,
 
