@@ -66,6 +66,10 @@ export interface DailyMissionItem {
   target: number;
   unit: string; // e.g. "msgs", "hrs"
   done: boolean;
+  description?: string;
+  priority?: "low" | "medium" | "high" | "critical";
+  color?: string; // hex
+  kanban?: "backlog" | "today" | "doing" | "done";
 }
 
 export interface MissionState {
@@ -114,6 +118,10 @@ export interface MissionState {
   addSkillXP: (id: string, xp: number) => void;
   toggleCountry: (code: string) => void;
   toggleDailyMission: (id: string) => void;
+  addDailyMission: (m: Omit<DailyMissionItem, "id" | "done">) => void;
+  updateDailyMission: (id: string, patch: Partial<DailyMissionItem>) => void;
+  deleteDailyMission: (id: string) => void;
+  setKanban: (id: string, status: NonNullable<DailyMissionItem["kanban"]>) => void;
   addVision: (v: Omit<VisionItem, "id">) => void;
   removeVision: (id: string) => void;
 }
@@ -187,12 +195,12 @@ export const useMission = create<MissionState>()(
         { id: "v7", title: "Financial Freedom", subtitle: "Sovereign capital", tag: "Freedom" },
       ],
       dailyMission: [
-        { id: "d1", label: "Outreach Messages", target: 20, unit: "msgs", done: false },
-        { id: "d2", label: "Follow Ups", target: 5, unit: "msgs", done: false },
-        { id: "d3", label: "Sales Calls", target: 1, unit: "call", done: false },
-        { id: "d4", label: "Workout", target: 1, unit: "session", done: false },
-        { id: "d5", label: "Deep Learning", target: 2, unit: "hrs", done: false },
-        { id: "d6", label: "Build Product", target: 3, unit: "hrs", done: false },
+        { id: "d1", label: "Outreach Messages", target: 20, unit: "msgs", done: false, priority: "high", color: "#60a5fa", kanban: "today", description: "DM 20 qualified leads." },
+        { id: "d2", label: "Follow Ups", target: 5, unit: "msgs", done: false, priority: "medium", color: "#a78bfa", kanban: "today", description: "Chase warm prospects." },
+        { id: "d3", label: "Sales Calls", target: 1, unit: "call", done: false, priority: "critical", color: "#f43f5e", kanban: "doing", description: "Close one discovery call." },
+        { id: "d4", label: "Workout", target: 1, unit: "session", done: false, priority: "medium", color: "#34d399", kanban: "today", description: "60 min strength." },
+        { id: "d5", label: "Deep Learning", target: 2, unit: "hrs", done: false, priority: "low", color: "#fbbf24", kanban: "backlog", description: "Read & take notes." },
+        { id: "d6", label: "Build Product", target: 3, unit: "hrs", done: false, priority: "high", color: "#22d3ee", kanban: "doing", description: "Ship one feature." },
       ],
       visitedCountries: ["IN"],
       travelBucket: ["JP", "US", "AE", "CH", "IS"],
@@ -297,6 +305,36 @@ export const useMission = create<MissionState>()(
         set((s) => ({
           dailyMission: s.dailyMission.map((d) =>
             d.id === id ? { ...d, done: !d.done } : d,
+          ),
+        })),
+      addDailyMission: (m) =>
+        set((s) => ({
+          dailyMission: [
+            ...s.dailyMission,
+            {
+              id: crypto.randomUUID(),
+              done: false,
+              kanban: m.kanban ?? "backlog",
+              priority: m.priority ?? "medium",
+              color: m.color ?? "#60a5fa",
+              ...m,
+            },
+          ],
+        })),
+      updateDailyMission: (id, patch) =>
+        set((s) => ({
+          dailyMission: s.dailyMission.map((d) =>
+            d.id === id ? { ...d, ...patch } : d,
+          ),
+        })),
+      deleteDailyMission: (id) =>
+        set((s) => ({
+          dailyMission: s.dailyMission.filter((d) => d.id !== id),
+        })),
+      setKanban: (id, status) =>
+        set((s) => ({
+          dailyMission: s.dailyMission.map((d) =>
+            d.id === id ? { ...d, kanban: status } : d,
           ),
         })),
       addVision: (v) =>
