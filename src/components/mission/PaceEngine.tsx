@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
 import { useMission } from "@/lib/mission/store";
 import { fmtINR } from "@/lib/mission/format";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Pencil } from "lucide-react";
+import { useState } from "react";
 import {
   AreaChart,
   Area,
@@ -16,9 +19,29 @@ import { differenceInMonths } from "date-fns";
 export function PaceEngine() {
   const m = useMission();
   const current = Math.max(1, m.monthlyRevenue);
-  const target = 10000000;
+  const target = Math.max(current + 1, m.monthlyTarget);
   const months = Math.max(1, differenceInMonths(new Date(m.missionTarget), new Date()));
   const g = Math.pow(target / current, 1 / months) - 1;
+
+  const [amountStr, setAmountStr] = useState(String(m.monthlyTarget));
+  const [dateStr, setDateStr] = useState(m.missionTarget.slice(0, 10));
+
+  const formatTargetHeadline = (n: number) => {
+    if (n >= 10000000) {
+      const cr = n / 10000000;
+      return `₹${cr % 1 === 0 ? cr : cr.toFixed(2)} Cr / month`;
+    }
+    if (n >= 100000) {
+      const l = n / 100000;
+      return `₹${l % 1 === 0 ? l : l.toFixed(2)} L / month`;
+    }
+    return `${fmtINR(n)} / month`;
+  };
+
+  const targetDateLabel = new Date(m.missionTarget).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
 
   const data = Array.from({ length: months + 1 }).map((_, i) => ({
     m: i,
@@ -42,9 +65,64 @@ export function PaceEngine() {
             <div className="text-xs uppercase tracking-[0.4em] text-muted-foreground mb-3">
               08 · Financial Pace Engine
             </div>
-            <h2 className="text-display text-4xl md:text-6xl text-foreground">
-              ₹1 Cr / month <span className="text-muted-foreground">by Jun 2029.</span>
-            </h2>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="group text-left">
+                  <h2 className="text-display text-4xl md:text-6xl text-foreground inline-flex items-center gap-3 cursor-pointer transition-colors hover:text-foreground/80">
+                    {formatTargetHeadline(m.monthlyTarget)}{" "}
+                    <span className="text-muted-foreground">by {targetDateLabel}.</span>
+                    <Pencil className="h-4 w-4 opacity-0 group-hover:opacity-60 transition-opacity" />
+                  </h2>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="start"
+                className="w-80 rounded-2xl border-white/10 bg-black/90 backdrop-blur-xl p-5 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)]"
+              >
+                <div className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground mb-4">
+                  Edit Mission Goal
+                </div>
+                <div className="space-y-4">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                      Target Monthly Revenue (₹)
+                    </span>
+                    <input
+                      type="number"
+                      value={amountStr}
+                      onChange={(e) => {
+                        setAmountStr(e.target.value);
+                        const n = Number(e.target.value);
+                        if (!Number.isNaN(n) && n > 0) m.setField("monthlyTarget", n);
+                      }}
+                      className="rounded-xl bg-black/60 border border-white/10 px-4 py-3 outline-none text-foreground tabular-nums focus:border-white/30 transition"
+                    />
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {formatTargetHeadline(Number(amountStr) || 0)}
+                    </span>
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                      Target Date
+                    </span>
+                    <input
+                      type="date"
+                      value={dateStr}
+                      onChange={(e) => {
+                        setDateStr(e.target.value);
+                        if (e.target.value) {
+                          m.setField(
+                            "missionTarget",
+                            new Date(e.target.value).toISOString(),
+                          );
+                        }
+                      }}
+                      className="rounded-xl bg-black/60 border border-white/10 px-4 py-3 outline-none text-foreground tabular-nums focus:border-white/30 transition [color-scheme:dark]"
+                    />
+                  </label>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
           <div className={`text-display text-xl tracking-[0.3em] ${status.color}`}>
             ● {status.label}
