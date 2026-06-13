@@ -112,11 +112,6 @@ function TaskRow({
           : "neu-inset border-transparent hover:bg-white/[0.02]"
       }`}
     >
-      <span
-        aria-hidden
-        className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full"
-        style={{ background: color, opacity: item.done ? 0.4 : 0.9 }}
-      />
       <button
         onClick={onToggle}
         className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center border transition ${
