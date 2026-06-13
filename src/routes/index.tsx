@@ -5,7 +5,7 @@ import { SalesChart } from "@/components/mission/SalesChart";
 import { Calendar } from "@/components/mission/Calendar";
 import { Productivity } from "@/components/mission/Productivity";
 import { Timeline } from "@/components/mission/Timeline";
-import { Metrics } from "@/components/mission/Metrics";
+import { TaskHoursChart } from "@/components/mission/TaskHoursChart";
 import { Heatmap } from "@/components/mission/Heatmap";
 import { PaceEngine } from "@/components/mission/PaceEngine";
 import { WorldTour } from "@/components/mission/WorldTour";
@@ -46,7 +46,7 @@ function Index() {
         <Timeline />
         <Financial />
         <PaceEngine />
-        <Metrics />
+        <TaskHoursChart />
         <Productivity />
         <Heatmap />
         <SalesChart />

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { Pencil, X } from "lucide-react";
 import { useMission } from "@/lib/mission/store";
 
 function Cell({ value, label, mono }: { value: string; label: string; mono?: boolean }) {
@@ -20,9 +21,10 @@ function Cell({ value, label, mono }: { value: string; label: string; mono?: boo
 }
 
 export function Countdown() {
-  const { missionTarget, missionStart } = useMission();
+  const { missionTarget, missionStart, patch } = useMission();
   const target = new Date(missionTarget).getTime();
   const start = new Date(missionStart).getTime();
+  const [editing, setEditing] = useState(false);
 
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -68,8 +70,18 @@ export function Countdown() {
               Mission 2029 · Command
             </span>
           </div>
-          <div className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-            T-Minus · {totalDays.toLocaleString()} d
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-muted-foreground hover:text-foreground transition"
+              title="Edit mission dates"
+            >
+              <Pencil className="h-3 w-3" />
+              Edit dates
+            </button>
+            <span className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+              T-Minus · {totalDays.toLocaleString()} d
+            </span>
           </div>
         </header>
 
@@ -77,7 +89,8 @@ export function Countdown() {
           initial={{ opacity: 0, scale: 0.96 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          className="flex-1 flex flex-col items-center justify-center text-center relative"
+          className="flex-1 flex flex-col items-center justify-center text-center relative cursor-pointer"
+          onDoubleClick={() => setEditing(true)}
         >
           {/* Circular HUD */}
           <div className="relative" style={{ width: size, height: size, maxWidth: "92vw" }}>
@@ -188,6 +201,81 @@ export function Countdown() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {editing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] flex items-center justify-center p-6"
+          >
+            <div
+              className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              onClick={() => setEditing(false)}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="glass relative w-full max-w-md p-8 rounded-2xl"
+            >
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <div className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+                    Mission Dates
+                  </div>
+                  <h3 className="text-display text-2xl mt-2">Edit your countdown</h3>
+                </div>
+                <button
+                  onClick={() => setEditing(false)}
+                  className="rounded-full p-2 hover:bg-white/5"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <label className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Start Date
+                  </span>
+                  <input
+                    type="date"
+                    value={missionStart.slice(0, 10)}
+                    onChange={(e) =>
+                      patch({
+                        missionStart: new Date(e.target.value).toISOString(),
+                      })
+                    }
+                    className="rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30"
+                  />
+                </label>
+                <label className="flex flex-col gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Goal / Target Date
+                  </span>
+                  <input
+                    type="date"
+                    value={missionTarget.slice(0, 10)}
+                    onChange={(e) =>
+                      patch({
+                        missionTarget: new Date(e.target.value).toISOString(),
+                      })
+                    }
+                    className="rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30"
+                  />
+                </label>
+              </div>
+              <button
+                onClick={() => setEditing(false)}
+                className="mt-6 w-full rounded-full bg-white text-black text-xs font-medium py-3 uppercase tracking-[0.3em]"
+              >
+                Done
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
