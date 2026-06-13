@@ -32,8 +32,8 @@ export function Timeline() {
             <div className="text-xs uppercase tracking-[0.4em] text-muted-foreground mb-3">
               01.5 · Mission Trajectory
             </div>
-            <h2 className="text-display text-4xl md:text-6xl text-foreground">
-              The arc to <span className="text-muted-foreground">2029</span>
+            <h2 className="text-display text-xl md:text-2xl text-foreground tracking-tight">
+              The arc <span className="text-muted-foreground">·</span> trajectory
             </h2>
           </div>
           <button
