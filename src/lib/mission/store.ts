@@ -128,48 +128,24 @@ export interface MissionState {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-function seedDays(): Record<string, DayEntry> {
-  const out: Record<string, DayEntry> = {};
-  const now = new Date();
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    const key = d.toISOString().slice(0, 10);
-    const intensity = Math.random();
-    out[key] = {
-      date: key,
-      hoursWorked: Math.round(intensity * 9 * 10) / 10,
-      tasksCompleted: Math.floor(intensity * 8),
-      tasksCancelled: Math.floor(Math.random() * 2),
-      revenueGenerated: Math.floor(intensity * 8000),
-      coldCalls: Math.floor(intensity * 25),
-      followUps: Math.floor(intensity * 10),
-      dealsClosed: Math.random() > 0.7 ? 1 : 0,
-      notes: "",
-      tasks: [],
-    };
-  }
-  return out;
-}
-
 export const useMission = create<MissionState>()(
   persist(
     (set, get) => ({
       missionTarget: "2029-06-10T00:00:00.000Z",
       missionStart: new Date().toISOString(),
 
-      revenueTarget: 100000,
-      currentRevenue: 10000,
-      monthlyRevenue: 10000,
+      revenueTarget: 10000000,
+      currentRevenue: 0,
+      monthlyRevenue: 0,
       monthlyTarget: 10000000,
       clientTarget: 10,
-      currentClients: 1,
+      currentClients: 0,
 
-      coldCalls: 42,
-      followUps: 18,
-      dealsClosed: 1,
+      coldCalls: 0,
+      followUps: 0,
+      dealsClosed: 0,
 
-      days: seedDays(),
+      days: {},
 
       milestones: [
         { id: "m1", label: "₹1L / month", targetRevenue: 100000, targetDate: "2026-12-31", done: false },
