@@ -9,7 +9,6 @@ import { Metrics } from "@/components/mission/Metrics";
 import { Heatmap } from "@/components/mission/Heatmap";
 import { PaceEngine } from "@/components/mission/PaceEngine";
 import { WorldTour } from "@/components/mission/WorldTour";
-import { SkillTree } from "@/components/mission/SkillTree";
 import { DailyExecution } from "@/components/mission/DailyExecution";
 import { VisionBoard } from "@/components/mission/VisionBoard";
 import { WarMode } from "@/components/mission/WarMode";
@@ -53,7 +52,6 @@ function Index() {
         <SalesChart />
         <Calendar />
         <Kanban />
-        <SkillTree />
         <WorldTour />
         <VisionBoard />
         <footer className="px-6 py-12 text-center text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
