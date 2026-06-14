@@ -3,17 +3,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, X } from "lucide-react";
 import { useMission } from "@/lib/mission/store";
 
-function Cell({ value, label, mono }: { value: string; label: string; mono?: boolean }) {
+function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div className="flex flex-col items-center">
-      <div
-        className={`text-display tabular-nums text-foreground ${
-          mono ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
-        }`}
-      >
+      <div className="text-display tabular-nums text-foreground text-xl md:text-2xl">
         {value}
       </div>
-      <div className="mt-1 text-[9px] md:text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
+      <div className="mt-1 text-[9px] uppercase tracking-[0.35em] text-muted-foreground">
         {label}
       </div>
     </div>
@@ -40,6 +36,7 @@ export function Countdown() {
   const DAY = 24 * 3600 * 1000;
   const totalDays = Math.floor(ms / DAY);
   const totalHours = Math.floor(ms / (3600 * 1000));
+  const totalMinutes = Math.floor(ms / 60000);
   const totalWeeks = Math.floor(totalDays / 7);
   const totalMonths = Math.floor(totalDays / 30.4375);
   const totalYears = (totalDays / 365.25);
@@ -48,9 +45,9 @@ export function Countdown() {
   const ss = Math.floor((ms % 60000) / 1000);
 
   // Ring geometry
-  const size = 640;
-  const stroke = 2.5;
-  const r = (size - stroke) / 2 - 8;
+  const size = 720;
+  const stroke = 1.5;
+  const r = (size - stroke) / 2 - 12;
   const c = 2 * Math.PI * r;
   const off = c * (1 - remaining);
 
@@ -93,7 +90,10 @@ export function Countdown() {
           onDoubleClick={() => setEditing(true)}
         >
           {/* Circular HUD */}
-          <div className="relative" style={{ width: size, height: size, maxWidth: "92vw" }}>
+          <div
+            className="relative"
+            style={{ width: size, height: size, maxWidth: "min(92vw, 78vh)" }}
+          >
             <svg
               viewBox={`0 0 ${size} ${size}`}
               className="absolute inset-0 w-full h-full -rotate-90"
@@ -103,8 +103,17 @@ export function Countdown() {
                 cx={size / 2}
                 cy={size / 2}
                 r={r}
-                stroke="rgba(255,255,255,0.06)"
+                stroke="rgba(255,255,255,0.05)"
                 strokeWidth={stroke}
+                fill="none"
+              />
+              {/* inner guide ring */}
+              <circle
+                cx={size / 2}
+                cy={size / 2}
+                r={r - 36}
+                stroke="rgba(255,255,255,0.03)"
+                strokeWidth={1}
                 fill="none"
               />
               {/* progress ring */}
@@ -120,15 +129,16 @@ export function Countdown() {
                 initial={{ strokeDashoffset: c }}
                 animate={{ strokeDashoffset: off }}
                 transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
-                style={{ filter: "drop-shadow(0 0 12px rgba(255,255,255,0.5))" }}
+                style={{ filter: "drop-shadow(0 0 10px rgba(255,255,255,0.45))" }}
               />
               {/* tick marks */}
               {Array.from({ length: 60 }).map((_, i) => {
                 const angle = (i / 60) * Math.PI * 2;
-                const x1 = size / 2 + Math.cos(angle) * (r - 14);
-                const y1 = size / 2 + Math.sin(angle) * (r - 14);
-                const x2 = size / 2 + Math.cos(angle) * (r - (i % 5 === 0 ? 24 : 18));
-                const y2 = size / 2 + Math.sin(angle) * (r - (i % 5 === 0 ? 24 : 18));
+                const inset = i % 5 === 0 ? 16 : 8;
+                const x1 = size / 2 + Math.cos(angle) * (r - 4);
+                const y1 = size / 2 + Math.sin(angle) * (r - 4);
+                const x2 = size / 2 + Math.cos(angle) * (r - 4 - inset);
+                const y2 = size / 2 + Math.sin(angle) * (r - 4 - inset);
                 return (
                   <line
                     key={i}
@@ -136,53 +146,72 @@ export function Countdown() {
                     y1={y1}
                     x2={x2}
                     y2={y2}
-                    stroke="rgba(255,255,255,0.18)"
-                    strokeWidth={i % 5 === 0 ? 1.2 : 0.6}
+                    stroke={i % 5 === 0 ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}
+                    strokeWidth={i % 5 === 0 ? 1 : 0.5}
                   />
                 );
               })}
             </svg>
 
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <div className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground mb-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center px-10">
+              <div className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground mb-6">
                 Mission 2029
               </div>
-              <motion.div
-                key={totalDays}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="text-display text-[28vw] md:text-[14rem] leading-[0.85] text-foreground tabular-nums"
-                style={{ textShadow: "0 0 60px rgba(255,255,255,0.18)" }}
-              >
-                {totalDays.toLocaleString()}
-              </motion.div>
-              <div className="mt-2 text-[11px] uppercase tracking-[0.5em] text-muted-foreground">
-                Days Remaining
+
+              {/* Big dual readout: Days + Minutes */}
+              <div className="flex items-baseline justify-center gap-6 md:gap-10">
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    key={totalDays}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="text-display leading-[0.85] text-foreground tabular-nums text-[18vw] md:text-[9rem]"
+                    style={{ textShadow: "0 0 60px rgba(255,255,255,0.18)" }}
+                  >
+                    {totalDays.toLocaleString()}
+                  </motion.div>
+                  <div className="mt-3 text-[10px] uppercase tracking-[0.5em] text-muted-foreground">
+                    Days
+                  </div>
+                </div>
+                <div className="h-24 md:h-32 w-px bg-white/10" />
+                <div className="flex flex-col items-center">
+                  <motion.div
+                    key={totalMinutes}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    className="text-display leading-[0.85] text-foreground tabular-nums text-[14vw] md:text-[7rem]"
+                    style={{ textShadow: "0 0 50px rgba(255,255,255,0.14)" }}
+                  >
+                    {totalMinutes.toLocaleString()}
+                  </motion.div>
+                  <div className="mt-3 text-[10px] uppercase tracking-[0.5em] text-muted-foreground">
+                    Minutes
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-8 flex flex-wrap items-center justify-center gap-4 md:gap-10">
-                <Cell value={totalWeeks.toLocaleString()} label="Weeks" />
-                <span className="hidden md:block h-6 w-px bg-white/10" />
-                <Cell value={totalMonths.toLocaleString()} label="Months" />
-                <span className="hidden md:block h-6 w-px bg-white/10" />
-                <Cell value={totalYears.toFixed(1)} label="Years" />
-                <span className="hidden md:block h-6 w-px bg-white/10" />
-                <Cell value={totalHours.toLocaleString()} label="Hours" />
-                <span className="hidden md:block h-6 w-px bg-white/10" />
-                <Cell value={String(ss).padStart(2, "0")} label="Seconds" mono />
+              {/* Secondary row — compact, evenly spaced */}
+              <div className="mt-10 grid grid-cols-5 gap-x-6 md:gap-x-10">
+                <Stat value={totalWeeks.toLocaleString()} label="Weeks" />
+                <Stat value={totalMonths.toLocaleString()} label="Months" />
+                <Stat value={totalYears.toFixed(1)} label="Years" />
+                <Stat value={totalHours.toLocaleString()} label="Hours" />
+                <Stat value={String(ss).padStart(2, "0")} label="Seconds" />
               </div>
             </div>
           </div>
 
           {/* live HH:MM:SS underline */}
-          <div className="mt-8 flex items-center gap-3 text-[11px] uppercase tracking-[0.4em] text-muted-foreground">
+          <div className="mt-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
             <span>Live</span>
-            <span className="text-foreground tabular-nums text-base">
+            <span className="text-foreground tabular-nums text-sm">
               {String(hh).padStart(2, "0")}:{String(mm).padStart(2, "0")}:
               {String(ss).padStart(2, "0")}
             </span>
-            <span>until 10 Jun 2029</span>
+            <span>until {new Date(missionTarget).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</span>
           </div>
         </motion.div>
 
