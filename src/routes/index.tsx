@@ -6,6 +6,7 @@ import { Calendar } from "@/components/mission/Calendar";
 import { Productivity } from "@/components/mission/Productivity";
 import { Timeline } from "@/components/mission/Timeline";
 import { TaskHoursChart } from "@/components/mission/TaskHoursChart";
+import { Pomodoro } from "@/components/mission/Pomodoro";
 import { Heatmap } from "@/components/mission/Heatmap";
 import { PaceEngine } from "@/components/mission/PaceEngine";
 import { WorldTour } from "@/components/mission/WorldTour";
@@ -43,6 +44,7 @@ function Index() {
       <div className="relative z-10">
         <Countdown />
         <DailyExecution />
+        <Pomodoro />
         <Timeline />
         <Financial />
         <PaceEngine />

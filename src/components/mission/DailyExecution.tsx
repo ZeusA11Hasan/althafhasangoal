@@ -28,6 +28,14 @@ export function DailyExecution() {
   const total = Math.max(1, dailyMission.length);
   const pct = (doneCount / total) * 100;
 
+  // Sort: timed slots ascending, untimed last
+  const ordered = [...dailyMission].sort((a, b) => {
+    if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+    if (a.startTime) return -1;
+    if (b.startTime) return 1;
+    return 0;
+  });
+
   return (
     <section className="relative w-full py-24 px-6">
       <div className="mx-auto max-w-7xl">
@@ -60,7 +68,7 @@ export function DailyExecution() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <AnimatePresence initial={false}>
-              {dailyMission.map((d) => (
+              {ordered.map((d) => (
                 <TaskRow key={d.id} item={d} onToggle={() => toggleDailyMission(d.id)} />
               ))}
             </AnimatePresence>
@@ -124,6 +132,12 @@ function TaskRow({
       </button>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
+          {item.startTime && (
+            <span className="text-[10px] tabular-nums uppercase tracking-[0.25em] px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-foreground/90">
+              {item.startTime}
+              {item.durationMinutes ? ` · ${item.durationMinutes}m` : ""}
+            </span>
+          )}
           <div
             className={`text-base truncate ${
               item.done ? "text-foreground/60 line-through" : "text-foreground"
@@ -224,6 +238,29 @@ export function EditForm({
             value={item.unit}
             onChange={(e) => onChange({ unit: e.target.value })}
             className="w-full rounded-xl bg-black/60 border border-white/10 px-3 py-2 outline-none text-foreground focus:border-white/30 transition"
+          />
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Start Time (IST)">
+          <input
+            type="time"
+            value={item.startTime ?? ""}
+            onChange={(e) => onChange({ startTime: e.target.value || undefined })}
+            className="w-full rounded-xl bg-black/60 border border-white/10 px-3 py-2 outline-none text-foreground tabular-nums focus:border-white/30 transition"
+          />
+        </Field>
+        <Field label="Duration (min)">
+          <input
+            type="number"
+            min={0}
+            value={item.durationMinutes ?? ""}
+            onChange={(e) =>
+              onChange({
+                durationMinutes: e.target.value ? Number(e.target.value) : undefined,
+              })
+            }
+            className="w-full rounded-xl bg-black/60 border border-white/10 px-3 py-2 outline-none text-foreground tabular-nums focus:border-white/30 transition"
           />
         </Field>
       </div>
