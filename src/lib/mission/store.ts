@@ -70,6 +70,8 @@ export interface DailyMissionItem {
   priority?: "low" | "medium" | "high" | "critical";
   color?: string; // hex
   kanban?: "backlog" | "today" | "doing" | "done";
+  startTime?: string; // "HH:MM" 24h IST
+  durationMinutes?: number;
 }
 
 export interface MissionState {
@@ -112,6 +114,7 @@ export interface MissionState {
   startTimer: (date: string, taskId: string) => void;
   pauseTimer: (date: string, taskId: string) => void;
   stopTimer: (date: string, taskId: string) => void;
+  logPomodoroSession: (label: string, minutes: number) => void;
 
   upsertMilestone: (m: Milestone) => void;
   removeMilestone: (id: string) => void;
@@ -126,13 +129,23 @@ export interface MissionState {
   removeVision: (id: string) => void;
 }
 
-const today = () => new Date().toISOString().slice(0, 10);
+// IST date helpers
+export const istDateKey = (d: Date = new Date()) =>
+  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(d);
+
+export const istTomorrowMidnightISO = () => {
+  const t = new Date(istDateKey() + "T00:00:00+05:30");
+  t.setDate(t.getDate() + 1);
+  return t.toISOString();
+};
+
+const today = istDateKey;
 
 export const useMission = create<MissionState>()(
   persist(
     (set, get) => ({
       missionTarget: "2029-06-10T00:00:00.000Z",
-      missionStart: new Date().toISOString(),
+      missionStart: istTomorrowMidnightISO(),
 
       revenueTarget: 10000000,
       currentRevenue: 0,
@@ -254,6 +267,61 @@ export const useMission = create<MissionState>()(
           timerStartedAt: null,
           accumulatedMs: totalMs,
           actualHours: +(totalMs / 3600000).toFixed(2),
+        });
+      },
+
+      logPomodoroSession: (label, minutes) => {
+        const date = istDateKey();
+        const hours = minutes / 60;
+        const prev =
+          get().days[date] ?? {
+            date,
+            hoursWorked: 0,
+            tasksCompleted: 0,
+            tasksCancelled: 0,
+            revenueGenerated: 0,
+            coldCalls: 0,
+            followUps: 0,
+            dealsClosed: 0,
+            notes: "",
+            tasks: [] as Task[],
+          };
+        const cleanLabel = label.trim() || "Focus";
+        const existing = prev.tasks.find(
+          (t) => t.title.trim().toLowerCase() === cleanLabel.toLowerCase(),
+        );
+        let tasks: Task[];
+        if (existing) {
+          tasks = prev.tasks.map((t) =>
+            t.id === existing.id
+              ? {
+                  ...t,
+                  actualHours: +(t.actualHours + hours).toFixed(2),
+                  accumulatedMs: t.accumulatedMs + minutes * 60000,
+                  status: "in_progress",
+                }
+              : t,
+          );
+        } else {
+          tasks = [
+            ...prev.tasks,
+            {
+              id: crypto.randomUUID(),
+              title: cleanLabel,
+              description: "",
+              priority: "medium",
+              estimatedHours: 0,
+              actualHours: +hours.toFixed(2),
+              status: "in_progress",
+              timerRunning: false,
+              timerStartedAt: null,
+              accumulatedMs: minutes * 60000,
+            },
+          ];
+        }
+        get().upsertDay(date, {
+          tasks,
+          hoursWorked: +(prev.hoursWorked + hours).toFixed(2),
         });
       },
 

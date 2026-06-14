@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, X } from "lucide-react";
-import { useMission } from "@/lib/mission/store";
+import { useMission, istTomorrowMidnightISO } from "@/lib/mission/store";
+
+const IST_FMT = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "Asia/Kolkata",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -18,8 +25,6 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 export function Countdown() {
   const { missionTarget, missionStart, patch } = useMission();
-  const target = new Date(missionTarget).getTime();
-  const start = new Date(missionStart).getTime();
   const [editing, setEditing] = useState(false);
 
   const [now, setNow] = useState(() => Date.now());
@@ -28,11 +33,23 @@ export function Countdown() {
     return () => clearInterval(t);
   }, []);
 
+  // Auto-correct: if mission start is in the past, push to next IST midnight.
+  useEffect(() => {
+    if (new Date(missionStart).getTime() <= Date.now()) {
+      patch({ missionStart: istTomorrowMidnightISO() });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const target = new Date(missionTarget).getTime();
+  const start = new Date(missionStart).getTime();
+  const hasStarted = now >= start;
   const totalRange = Math.max(1, target - start);
   const consumed = Math.max(0, Math.min(1, (now - start) / totalRange));
-  const remaining = 1 - consumed;
 
-  const ms = Math.max(0, target - now);
+  // Countdown only starts ticking once mission start is reached.
+  const ms = Math.max(0, target - Math.max(now, start));
+  const msToStart = Math.max(0, start - now);
   const DAY = 24 * 3600 * 1000;
   const totalDays = Math.floor(ms / DAY);
   const totalHours = Math.floor(ms / (3600 * 1000));
@@ -41,9 +58,11 @@ export function Countdown() {
   const totalWeeks = Math.floor(totalDays / 7);
   const totalMonths = Math.floor(totalDays / 30.4375);
   const totalYears = (totalDays / 365.25);
-  const hh = Math.floor((ms % DAY) / 3600000);
-  const mm = Math.floor((ms % 3600000) / 60000);
-  const ss = Math.floor((ms % 60000) / 1000);
+
+  // Until mission begins
+  const startDays = Math.floor(msToStart / DAY);
+  const startHours = Math.floor((msToStart % DAY) / 3600000);
+  const startMins = Math.floor((msToStart % 3600000) / 60000);
 
   return (
     <section className="relative min-h-screen w-full overflow-hidden grain">
@@ -55,25 +74,25 @@ export function Countdown() {
 
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col justify-between px-6 py-8">
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-1.5 w-1.5 rounded-full bg-white shadow-[0_0_14px_rgba(255,255,255,0.85)] animate-pulse" />
-            <span className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground">
-              Mission 2029 · Command
-            </span>
+          <div className="flex items-center gap-6 text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span className="opacity-60">Goal Start</span>
+              <span className="text-foreground">{IST_FMT.format(new Date(missionStart))}</span>
+            </div>
+            <div className="hidden md:block h-3 w-px bg-white/10" />
+            <div className="hidden md:flex items-center gap-2">
+              <span className="opacity-60">Goal End</span>
+              <span className="text-foreground">{IST_FMT.format(new Date(missionTarget))}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setEditing(true)}
-              className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-muted-foreground hover:text-foreground transition"
-              title="Edit mission dates"
-            >
-              <Pencil className="h-3 w-3" />
-              Edit dates
-            </button>
-            <span className="text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-              T-Minus · {totalDays.toLocaleString()} d
-            </span>
-          </div>
+          <button
+            onClick={() => setEditing(true)}
+            className="flex items-center gap-2 text-[10px] uppercase tracking-[0.4em] text-muted-foreground hover:text-foreground transition"
+            title="Edit mission dates"
+          >
+            <Pencil className="h-3 w-3" />
+            Edit dates
+          </button>
         </header>
 
         <motion.div
@@ -86,8 +105,14 @@ export function Countdown() {
           <div className="relative w-full">
             <div className="flex flex-col items-center justify-center px-6">
               <div className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground mb-6">
-                Mission 2029
+                {hasStarted ? "Mission 2029 · In Progress" : "Mission 2029 · Begins"}
               </div>
+
+              {!hasStarted && (
+                <div className="mb-6 text-[11px] uppercase tracking-[0.4em] text-foreground/80">
+                  Starts in {startDays}d {startHours}h {startMins}m
+                </div>
+              )}
 
               {/* Big dual readout: Days + Minutes */}
               <div className="flex items-baseline justify-center gap-6 md:gap-10">
@@ -135,14 +160,10 @@ export function Countdown() {
             </div>
           </div>
 
-          {/* live HH:MM:SS underline */}
-          <div className="mt-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-            <span>Live</span>
-            <span className="text-foreground tabular-nums text-sm">
-              {String(hh).padStart(2, "0")}:{String(mm).padStart(2, "0")}:
-              {String(ss).padStart(2, "0")}
-            </span>
-            <span>until {new Date(missionTarget).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" })}</span>
+          {/* IST window only — no live ticking clock */}
+          <div className="mt-6 flex items-center gap-3 text-[10px] uppercase tracking-[0.4em] text-muted-foreground md:hidden">
+            <span>Goal End</span>
+            <span className="text-foreground">{IST_FMT.format(new Date(missionTarget))}</span>
           </div>
         </motion.div>
 
