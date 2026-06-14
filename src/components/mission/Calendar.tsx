@@ -20,13 +20,8 @@ import { TaskList } from "./TaskList";
 
 function intensity(d?: DayEntry) {
   if (!d) return 0;
-  const score =
-    d.hoursWorked * 8 +
-    d.tasksCompleted * 6 +
-    d.coldCalls * 1.5 +
-    d.followUps * 1 +
-    d.dealsClosed * 25;
-  return Math.max(0, Math.min(1, score / 120));
+  // Intensity is purely a function of hours worked (0h → empty, 10h → max).
+  return Math.max(0, Math.min(1, d.hoursWorked / 10));
 }
 
 function bg(level: number) {
@@ -118,7 +113,7 @@ export function Calendar() {
                   </div>
                   {day && day.revenueGenerated > 0 && (
                     <div className="absolute bottom-2 right-2 text-[9px] uppercase tracking-wider text-foreground/70">
-                      {Math.round(day.revenueGenerated / 1000)}k
+                      {day.hoursWorked.toFixed(1)}h
                     </div>
                   )}
                   {day && day.dealsClosed > 0 && (
