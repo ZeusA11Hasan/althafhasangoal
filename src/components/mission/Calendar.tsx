@@ -111,7 +111,7 @@ export function Calendar() {
                   <div className="absolute top-2 left-2 text-[11px] tabular-nums text-foreground/90 font-medium">
                     {format(d, "d")}
                   </div>
-                  {day && day.revenueGenerated > 0 && (
+                  {day && day.hoursWorked > 0 && (
                     <div className="absolute bottom-2 right-2 text-[9px] uppercase tracking-wider text-foreground/70">
                       {day.hoursWorked.toFixed(1)}h
                     </div>
