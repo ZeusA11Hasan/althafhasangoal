@@ -83,71 +83,8 @@ export function Countdown() {
           className="flex-1 flex flex-col items-center justify-center text-center relative cursor-pointer"
           onDoubleClick={() => setEditing(true)}
         >
-          {/* Circular HUD */}
-          <div
-            className="relative"
-            style={{ width: size, height: size, maxWidth: "min(92vw, 78vh)" }}
-          >
-            <svg
-              viewBox={`0 0 ${size} ${size}`}
-              className="absolute inset-0 w-full h-full -rotate-90"
-            >
-              {/* outer faint ring */}
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={r}
-                stroke="rgba(255,255,255,0.05)"
-                strokeWidth={stroke}
-                fill="none"
-              />
-              {/* inner guide ring */}
-              <circle
-                cx={size / 2}
-                cy={size / 2}
-                r={r - 36}
-                stroke="rgba(255,255,255,0.03)"
-                strokeWidth={1}
-                fill="none"
-              />
-              {/* progress ring */}
-              <motion.circle
-                cx={size / 2}
-                cy={size / 2}
-                r={r}
-                stroke="white"
-                strokeWidth={stroke}
-                strokeLinecap="round"
-                fill="none"
-                strokeDasharray={c}
-                initial={{ strokeDashoffset: c }}
-                animate={{ strokeDashoffset: off }}
-                transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
-                style={{ filter: "drop-shadow(0 0 10px rgba(255,255,255,0.45))" }}
-              />
-              {/* tick marks */}
-              {Array.from({ length: 60 }).map((_, i) => {
-                const angle = (i / 60) * Math.PI * 2;
-                const inset = i % 5 === 0 ? 16 : 8;
-                const x1 = size / 2 + Math.cos(angle) * (r - 4);
-                const y1 = size / 2 + Math.sin(angle) * (r - 4);
-                const x2 = size / 2 + Math.cos(angle) * (r - 4 - inset);
-                const y2 = size / 2 + Math.sin(angle) * (r - 4 - inset);
-                return (
-                  <line
-                    key={i}
-                    x1={x1}
-                    y1={y1}
-                    x2={x2}
-                    y2={y2}
-                    stroke={i % 5 === 0 ? "rgba(255,255,255,0.22)" : "rgba(255,255,255,0.08)"}
-                    strokeWidth={i % 5 === 0 ? 1 : 0.5}
-                  />
-                );
-              })}
-            </svg>
-
-            <div className="absolute inset-0 flex flex-col items-center justify-center px-10">
+          <div className="relative w-full">
+            <div className="flex flex-col items-center justify-center px-6">
               <div className="text-[10px] uppercase tracking-[0.5em] text-muted-foreground mb-6">
                 Mission 2029
               </div>
@@ -193,7 +130,7 @@ export function Countdown() {
                 <Stat value={totalMonths.toLocaleString()} label="Months" />
                 <Stat value={totalYears.toFixed(1)} label="Years" />
                 <Stat value={totalHours.toLocaleString()} label="Hours" />
-                <Stat value={String(ss).padStart(2, "0")} label="Seconds" />
+                <Stat value={totalSeconds.toLocaleString()} label="Seconds" />
               </div>
             </div>
           </div>
