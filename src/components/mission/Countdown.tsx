@@ -37,19 +37,13 @@ export function Countdown() {
   const totalDays = Math.floor(ms / DAY);
   const totalHours = Math.floor(ms / (3600 * 1000));
   const totalMinutes = Math.floor(ms / 60000);
+  const totalSeconds = Math.floor(ms / 1000);
   const totalWeeks = Math.floor(totalDays / 7);
   const totalMonths = Math.floor(totalDays / 30.4375);
   const totalYears = (totalDays / 365.25);
   const hh = Math.floor((ms % DAY) / 3600000);
   const mm = Math.floor((ms % 3600000) / 60000);
   const ss = Math.floor((ms % 60000) / 1000);
-
-  // Ring geometry
-  const size = 720;
-  const stroke = 1.5;
-  const r = (size - stroke) / 2 - 12;
-  const c = 2 * Math.PI * r;
-  const off = c * (1 - remaining);
 
   return (
     <section className="relative min-h-screen w-full overflow-hidden grain">
