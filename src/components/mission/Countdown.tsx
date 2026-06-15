@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, X } from "lucide-react";
-import { useMission, istTomorrowMidnightISO } from "@/lib/mission/store";
+import { useMission, istTomorrowMidnightISO, istDateKey } from "@/lib/mission/store";
 
 const IST_FMT = new Intl.DateTimeFormat("en-IN", {
   timeZone: "Asia/Kolkata",
@@ -9,6 +9,12 @@ const IST_FMT = new Intl.DateTimeFormat("en-IN", {
   month: "short",
   year: "numeric",
 });
+
+// Format an ISO timestamp as YYYY-MM-DD in IST (for <input type="date">)
+const istInputValue = (iso: string) => istDateKey(new Date(iso));
+// Convert a YYYY-MM-DD from an <input type="date"> into IST-midnight ISO
+const istDateInputToISO = (ymd: string) =>
+  new Date(`${ymd}T00:00:00+05:30`).toISOString();
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -222,10 +228,10 @@ export function Countdown() {
                   </span>
                   <input
                     type="date"
-                    value={missionStart.slice(0, 10)}
+                    value={istInputValue(missionStart)}
                     onChange={(e) =>
                       patch({
-                        missionStart: new Date(e.target.value).toISOString(),
+                        missionStart: istDateInputToISO(e.target.value),
                       })
                     }
                     className="rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30"
@@ -237,10 +243,10 @@ export function Countdown() {
                   </span>
                   <input
                     type="date"
-                    value={missionTarget.slice(0, 10)}
+                    value={istInputValue(missionTarget)}
                     onChange={(e) =>
                       patch({
-                        missionTarget: new Date(e.target.value).toISOString(),
+                        missionTarget: istDateInputToISO(e.target.value),
                       })
                     }
                     className="rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30"
