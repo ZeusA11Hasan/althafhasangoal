@@ -11,7 +11,12 @@ function fmt(sec: number) {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
-export function Pomodoro() {
+export interface PomodoroProps {
+  date?: string; // IST yyyy-MM-dd; if omitted, logs to today
+  compact?: boolean;
+}
+
+export function Pomodoro({ date, compact = false }: PomodoroProps) {
   const { dailyMission, logPomodoroSession } = useMission();
   const todayTasks = useMemo(
     () => dailyMission.filter((d) => d.kanban !== "done" && !d.done),
@@ -82,7 +87,7 @@ export function Pomodoro() {
     setRunning(false);
     startRef.current = null;
     const minutes = +(workedSec / 60).toFixed(2);
-    if (minutes > 0.1) logPomodoroSession(label || "Focus", minutes);
+    if (minutes > 0.1) logPomodoroSession(label || "Focus", minutes, date);
     baseRef.current = targetMin * 60;
     setRemaining(targetMin * 60);
   }
