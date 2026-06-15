@@ -16,8 +16,7 @@ import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useMission, type DayEntry } from "@/lib/mission/store";
 import { fmtINR } from "@/lib/mission/format";
 import { Field } from "./Modal";
-import { TaskList } from "./TaskList";
-import { Pomodoro } from "./Pomodoro";
+import { Check, Plus } from "lucide-react";
 
 function intensity(d?: DayEntry) {
   if (!d) return 0;
@@ -138,32 +137,32 @@ export function Calendar() {
         </div>
       </div>
 
-      {/* Side drawer */}
+      {/* Centered glass modal */}
       <AnimatePresence>
         {selected && selectedDay !== undefined && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[120]"
+            className="fixed inset-0 z-[120] flex items-center justify-center p-4 md:p-8"
           >
             <div
-              className="absolute inset-0 bg-black/70 backdrop-blur-md"
+              className="absolute inset-0 bg-black/75 backdrop-blur-xl"
               onClick={() => setSelected(null)}
             />
-            <motion.aside
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
-              transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-              className="glass absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto p-8"
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0, y: 12 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+              className="glass relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-8 border border-white/10 shadow-[0_40px_120px_-20px_rgba(0,0,0,0.9)]"
             >
               <DayDrawer
                 date={selected}
                 onClose={() => setSelected(null)}
                 onSave={(p) => upsertDay(selected, p)}
               />
-            </motion.aside>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -261,18 +260,115 @@ function DayDrawer({
         />
       </label>
 
-      <div className="mb-8">
-        <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3">
-          Focus Timer · logs to {format(parseISO(date), "MMM d")}
-        </div>
-        <Pomodoro date={date} compact />
-      </div>
-
       <div className="mb-2 text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
         Today's Revenue: <span className="text-foreground">{fmtINR(day.revenueGenerated)}</span>
       </div>
 
-      <TaskList date={date} />
+      <DailyMissionList />
+    </div>
+  );
+}
+
+function DailyMissionList() {
+  const {
+    dailyMission,
+    toggleDailyMission,
+    addDailyMission,
+    updateDailyMission,
+    deleteDailyMission,
+  } = useMission();
+
+  const ordered = [...dailyMission].sort((a, b) => {
+    if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
+    if (a.startTime) return -1;
+    if (b.startTime) return 1;
+    return 0;
+  });
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <div className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
+          Today's Mission · synced with main page
+        </div>
+        <button
+          onClick={() =>
+            addDailyMission({
+              label: "New Task",
+              target: 1,
+              unit: "x",
+              description: "",
+              priority: "medium",
+              color: "#60a5fa",
+              kanban: "today",
+            })
+          }
+          className="flex items-center gap-1.5 text-xs text-foreground/80 hover:text-foreground"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add
+        </button>
+      </div>
+      <div className="space-y-2">
+        {ordered.map((item) => {
+          const color = item.color ?? "#60a5fa";
+          return (
+            <div
+              key={item.id}
+              className={`group flex items-center gap-3 p-3 rounded-xl border transition ${
+                item.done
+                  ? "bg-white/[0.05] border-white/15"
+                  : "neu-inset border-transparent"
+              }`}
+            >
+              <button
+                onClick={() => toggleDailyMission(item.id)}
+                className={`h-6 w-6 shrink-0 rounded-full flex items-center justify-center border transition ${
+                  item.done
+                    ? "bg-white text-black border-white"
+                    : "border-white/20 text-transparent hover:border-white/50"
+                }`}
+              >
+                <Check className="h-3.5 w-3.5" />
+              </button>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {item.startTime && (
+                    <span className="text-[9px] tabular-nums uppercase tracking-[0.2em] px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10">
+                      {item.startTime}
+                    </span>
+                  )}
+                  <input
+                    value={item.label}
+                    onChange={(e) => updateDailyMission(item.id, { label: e.target.value })}
+                    className={`bg-transparent outline-none text-sm flex-1 ${
+                      item.done ? "text-foreground/60 line-through" : "text-foreground"
+                    }`}
+                  />
+                  {item.priority && (
+                    <span
+                      className="text-[9px] uppercase tracking-[0.2em] px-1.5 py-0.5 rounded-full border"
+                      style={{ borderColor: `${color}40`, color }}
+                    >
+                      {item.priority}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => deleteDailyMission(item.id)}
+                className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-danger text-xs px-2"
+              >
+                ✕
+              </button>
+            </div>
+          );
+        })}
+        {ordered.length === 0 && (
+          <div className="text-xs text-muted-foreground italic text-center py-6">
+            No mission items yet.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
