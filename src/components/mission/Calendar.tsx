@@ -17,6 +17,7 @@ import { useMission, type DayEntry } from "@/lib/mission/store";
 import { fmtINR } from "@/lib/mission/format";
 import { Field } from "./Modal";
 import { TaskList } from "./TaskList";
+import { Pomodoro } from "./Pomodoro";
 
 function intensity(d?: DayEntry) {
   if (!d) return 0;
@@ -259,6 +260,13 @@ function DayDrawer({
           className="rounded-xl bg-black/40 border border-white/5 px-4 py-3 outline-none focus:border-white/20 text-foreground placeholder:text-muted-foreground/50 resize-none"
         />
       </label>
+
+      <div className="mb-8">
+        <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3">
+          Focus Timer · logs to {format(parseISO(date), "MMM d")}
+        </div>
+        <Pomodoro date={date} compact />
+      </div>
 
       <div className="mb-2 text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
         Today's Revenue: <span className="text-foreground">{fmtINR(day.revenueGenerated)}</span>
