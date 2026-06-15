@@ -114,7 +114,7 @@ export interface MissionState {
   startTimer: (date: string, taskId: string) => void;
   pauseTimer: (date: string, taskId: string) => void;
   stopTimer: (date: string, taskId: string) => void;
-  logPomodoroSession: (label: string, minutes: number) => void;
+  logPomodoroSession: (label: string, minutes: number, targetDate?: string) => void;
 
   upsertMilestone: (m: Milestone) => void;
   removeMilestone: (id: string) => void;
@@ -270,8 +270,8 @@ export const useMission = create<MissionState>()(
         });
       },
 
-      logPomodoroSession: (label, minutes) => {
-        const date = istDateKey();
+      logPomodoroSession: (label, minutes, targetDate) => {
+        const date = targetDate ?? istDateKey();
         const hours = minutes / 60;
         const prev =
           get().days[date] ?? {
