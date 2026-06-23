@@ -6,13 +6,16 @@ import { fmtINR } from "@/lib/mission/format";
 
 export function AICoach() {
   const [open, setOpen] = useState(false);
-  const m = useMission();
-  const today = m.days[todayKey()];
+  const days = useMission((s) => s.days);
+  const dailyMission = useMission((s) => s.dailyMission);
+  const revenueTarget = useMission((s) => s.revenueTarget);
+  const currentRevenue = useMission((s) => s.currentRevenue);
+  const today = days[todayKey()];
 
   const messages = useMemo(() => {
     const out: { kind: "warn" | "ok" | "info"; text: string }[] = [];
     const outreach = today?.outreachSent ?? today?.coldCalls ?? 0;
-    const target = m.dailyMission.find((d) => d.id === "d1")?.target ?? 20;
+    const target = dailyMission.find((d) => d.id === "d1")?.target ?? 20;
     if (outreach < target) {
       const gap = target - outreach;
       const pctBehind = Math.round((gap / target) * 100);
@@ -34,19 +37,19 @@ export function AICoach() {
     if (!today?.workoutDone)
       out.push({ kind: "info", text: "Workout not logged. Body fuels mission." });
 
-    const remaining = Math.max(0, m.revenueTarget - m.currentRevenue);
+    const remaining = Math.max(0, revenueTarget - currentRevenue);
     out.push({
       kind: "info",
       text: `${fmtINR(remaining)} remaining to hit your 30-day sprint goal.`,
     });
 
-    const done = m.dailyMission.filter((d) => d.done).length;
+    const done = dailyMission.filter((d) => d.done).length;
     out.push({
-      kind: done === m.dailyMission.length ? "ok" : "info",
-      text: `Daily mission: ${done}/${m.dailyMission.length} complete.`,
+      kind: done === dailyMission.length ? "ok" : "info",
+      text: `Daily mission: ${done}/${dailyMission.length} complete.`,
     });
     return out;
-  }, [today, m.dailyMission, m.revenueTarget, m.currentRevenue]);
+  }, [today, dailyMission, revenueTarget, currentRevenue]);
 
   return (
     <>
@@ -92,13 +95,12 @@ export function AICoach() {
                   className="flex gap-3 text-sm"
                 >
                   <span
-                    className={`mt-1.5 h-1.5 w-1.5 rounded-full ${
-                      msg.kind === "warn"
+                    className={`mt-1.5 h-1.5 w-1.5 rounded-full ${msg.kind === "warn"
                         ? "bg-warning"
                         : msg.kind === "ok"
                           ? "bg-success"
                           : "bg-white/60"
-                    }`}
+                      }`}
                   />
                   <span className="text-foreground/85 leading-snug">{msg.text}</span>
                 </motion.div>

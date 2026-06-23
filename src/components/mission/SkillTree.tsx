@@ -3,7 +3,8 @@ import { Plus } from "lucide-react";
 import { useMission } from "@/lib/mission/store";
 
 export function SkillTree() {
-  const { skills, addSkillXP } = useMission();
+  const skills = useMission((s) => s.skills);
+  const addSkillXP = useMission((s) => s.addSkillXP);
 
   return (
     <section className="relative w-full py-24 px-6">

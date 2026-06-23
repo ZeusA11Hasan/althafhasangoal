@@ -29,6 +29,7 @@ export interface DayEntry {
   dealsClosed: number;
   notes: string;
   tasks: Task[];
+  dailyMission?: DailyMissionItem[];
   // v2 metrics
   workoutDone?: boolean;
   learningHours?: number;
@@ -60,6 +61,27 @@ export interface VisionItem {
   tag: string;
 }
 
+export interface TaskComment {
+  id: string;
+  text: string;
+  author: string;
+  timestamp: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+}
+
+export interface SubTask {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
 export interface DailyMissionItem {
   id: string;
   label: string;
@@ -72,6 +94,25 @@ export interface DailyMissionItem {
   kanban?: "backlog" | "today" | "doing" | "done";
   startTime?: string; // "HH:MM" 24h IST
   durationMinutes?: number;
+
+  // Notion-level features
+  dueDate?: string; // ISO date
+  tags?: string[];
+  assignee?: string;
+  progress?: number; // 0-100
+  estimatedHours?: number;
+  actualHours?: number;
+  comments?: TaskComment[];
+  attachments?: TaskAttachment[];
+  subTasks?: SubTask[];
+  dependencies?: string[]; // task IDs this depends on
+  blocked?: boolean;
+  template?: boolean;
+  customFields?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+  timerStarted?: number; // timestamp when timer started
+  timerAccumulated?: number; // accumulated milliseconds
 }
 
 export interface MissionState {
@@ -94,6 +135,7 @@ export interface MissionState {
 
   // Daily log
   days: Record<string, DayEntry>;
+  selectedDate: string;
 
   // v2
   milestones: Milestone[];
@@ -102,10 +144,12 @@ export interface MissionState {
   dailyMission: DailyMissionItem[];
   visitedCountries: string[]; // ISO codes or names
   travelBucket: string[];
+  kanbanColumns?: Array<{ id: string; label: string; hint: string }>;
 
   // setters
   setField: <K extends keyof MissionState>(k: K, v: MissionState[K]) => void;
   patch: (p: Partial<MissionState>) => void;
+  setSelectedDate: (date: string) => void;
 
   upsertDay: (date: string, patch: Partial<DayEntry>) => void;
   addTask: (date: string, task: Omit<Task, "id" | "actualHours" | "timerRunning" | "timerStartedAt" | "accumulatedMs">) => void;
@@ -120,23 +164,40 @@ export interface MissionState {
   removeMilestone: (id: string) => void;
   addSkillXP: (id: string, xp: number) => void;
   toggleCountry: (code: string) => void;
-  toggleDailyMission: (id: string) => void;
-  addDailyMission: (m: Omit<DailyMissionItem, "id" | "done">) => void;
-  updateDailyMission: (id: string, patch: Partial<DailyMissionItem>) => void;
-  deleteDailyMission: (id: string) => void;
-  setKanban: (id: string, status: NonNullable<DailyMissionItem["kanban"]>) => void;
+  toggleDailyMission: (date: string, id: string) => void;
+  addDailyMission: (date: string, m: Omit<DailyMissionItem, "id" | "done">) => void;
+  updateDailyMission: (date: string, id: string, patch: Partial<DailyMissionItem>) => void;
+  deleteDailyMission: (date: string, id: string) => void;
+  setKanban: (date: string, id: string, status: NonNullable<DailyMissionItem["kanban"]>) => void;
+  updateKanbanColumns?: (columns: Array<{ id: string; label: string; hint: string }>) => void;
   addVision: (v: Omit<VisionItem, "id">) => void;
   removeVision: (id: string) => void;
 }
 
 // IST date helpers
-export const istDateKey = (d: Date = new Date()) =>
-  new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata" }).format(d);
+export const istDateKey = (d: Date = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
+  if (!year || !month || !day) {
+    // Fallback should never happen, but keeps callers safe.
+    return "1970-01-01";
+  }
+
+  return `${year}-${month}-${day}`;
+};
 
 export const istTomorrowMidnightISO = () => {
-  const t = new Date(istDateKey() + "T00:00:00+05:30");
-  t.setDate(t.getDate() + 1);
-  return t.toISOString();
+  const todayIstMidnight = new Date(`${istDateKey()}T00:00:00+05:30`);
+  return new Date(todayIstMidnight.getTime() + 24 * 60 * 60 * 1000).toISOString();
 };
 
 const today = istDateKey;
@@ -159,6 +220,7 @@ export const useMission = create<MissionState>()(
       dealsClosed: 0,
 
       days: {},
+      selectedDate: istDateKey(),
 
       milestones: [
         { id: "m1", label: "₹1L / month", targetRevenue: 100000, targetDate: "2026-12-31", done: false },
@@ -196,6 +258,7 @@ export const useMission = create<MissionState>()(
 
       setField: (k, v) => set({ [k]: v } as any),
       patch: (p) => set(p),
+      setSelectedDate: (date) => set({ selectedDate: date }),
 
       upsertDay: (date, p) =>
         set((s) => {
@@ -210,6 +273,7 @@ export const useMission = create<MissionState>()(
             dealsClosed: 0,
             notes: "",
             tasks: [],
+            dailyMission: s.dailyMission,
           };
           return { days: { ...s.days, [date]: { ...prev, ...p } } };
         }),
@@ -295,11 +359,11 @@ export const useMission = create<MissionState>()(
           tasks = prev.tasks.map((t) =>
             t.id === existing.id
               ? {
-                  ...t,
-                  actualHours: +(t.actualHours + hours).toFixed(2),
-                  accumulatedMs: t.accumulatedMs + minutes * 60000,
-                  status: "in_progress",
-                }
+                ...t,
+                actualHours: +(t.actualHours + hours).toFixed(2),
+                accumulatedMs: t.accumulatedMs + minutes * 60000,
+                status: "in_progress",
+              }
               : t,
           );
         } else {
@@ -345,42 +409,50 @@ export const useMission = create<MissionState>()(
             ? s.visitedCountries.filter((c) => c !== code)
             : [...s.visitedCountries, code],
         })),
-      toggleDailyMission: (id) =>
-        set((s) => ({
-          dailyMission: s.dailyMission.map((d) =>
-            d.id === id ? { ...d, done: !d.done } : d,
-          ),
-        })),
-      addDailyMission: (m) =>
-        set((s) => ({
-          dailyMission: [
-            ...s.dailyMission,
-            {
-              id: crypto.randomUUID(),
-              done: false,
-              kanban: m.kanban ?? "backlog",
-              priority: m.priority ?? "medium",
-              color: m.color ?? "#60a5fa",
-              ...m,
-            },
-          ],
-        })),
-      updateDailyMission: (id, patch) =>
-        set((s) => ({
-          dailyMission: s.dailyMission.map((d) =>
-            d.id === id ? { ...d, ...patch } : d,
-          ),
-        })),
-      deleteDailyMission: (id) =>
-        set((s) => ({
-          dailyMission: s.dailyMission.filter((d) => d.id !== id),
-        })),
-      setKanban: (id, status) =>
-        set((s) => ({
-          dailyMission: s.dailyMission.map((d) =>
-            d.id === id ? { ...d, kanban: status } : d,
-          ),
-        })),
+      toggleDailyMission: (date, id) => {
+        const day = get().days[date];
+        const currentMissions = day?.dailyMission ?? get().dailyMission;
+        const updated = currentMissions.map((d) =>
+          d.id === id ? { ...d, done: !d.done } : d
+        );
+        get().upsertDay(date, { dailyMission: updated });
+      },
+      addDailyMission: (date, m) => {
+        const day = get().days[date];
+        const currentMissions = day?.dailyMission ?? get().dailyMission;
+        const newItem: DailyMissionItem = {
+          id: crypto.randomUUID(),
+          done: false,
+          kanban: m.kanban ?? "backlog",
+          priority: m.priority ?? "medium",
+          color: m.color ?? "#60a5fa",
+          ...m,
+        };
+        get().upsertDay(date, { dailyMission: [...currentMissions, newItem] });
+      },
+      updateDailyMission: (date, id, patch) => {
+        const day = get().days[date];
+        const currentMissions = day?.dailyMission ?? get().dailyMission;
+        const updated = currentMissions.map((d) =>
+          d.id === id ? { ...d, ...patch } : d
+        );
+        get().upsertDay(date, { dailyMission: updated });
+      },
+      deleteDailyMission: (date, id) => {
+        const day = get().days[date];
+        const currentMissions = day?.dailyMission ?? get().dailyMission;
+        const updated = currentMissions.filter((d) => d.id !== id);
+        get().upsertDay(date, { dailyMission: updated });
+      },
+      setKanban: (date, id, status) => {
+        const day = get().days[date];
+        const currentMissions = day?.dailyMission ?? get().dailyMission;
+        const updated = currentMissions.map((d) =>
+          d.id === id ? { ...d, kanban: status } : d
+        );
+        get().upsertDay(date, { dailyMission: updated });
+      },
+      updateKanbanColumns: (columns) => set({ kanbanColumns: columns }),
       addVision: (v) =>
         set((s) => ({
           visions: [...s.visions, { ...v, id: crypto.randomUUID() }],

@@ -10,11 +10,20 @@ const IST_FMT = new Intl.DateTimeFormat("en-IN", {
   year: "numeric",
 });
 
-// Format an ISO timestamp as YYYY-MM-DD in IST (for <input type="date">)
-const istInputValue = (iso: string) => istDateKey(new Date(iso));
-// Convert a YYYY-MM-DD from an <input type="date"> into IST-midnight ISO
-const istDateInputToISO = (ymd: string) =>
-  new Date(`${ymd}T00:00:00+05:30`).toISOString();
+// Parse a yyyy-mm-dd string into a Date at IST midnight, return ISO
+const parseYMD = (ymd: string): string | null => {
+  const m = ymd.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!m) return null;
+  const [_, y, mo, d] = m;
+  const dt = new Date(`${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}T00:00:00+05:30`);
+  return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+};
+
+const fmtYMD = (iso: string): string => {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  return istDateKey(d);
+};
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
@@ -30,7 +39,9 @@ function Stat({ value, label }: { value: string; label: string }) {
 }
 
 export function Countdown() {
-  const { missionTarget, missionStart, patch } = useMission();
+  const missionTarget = useMission((s) => s.missionTarget);
+  const missionStart = useMission((s) => s.missionStart);
+  const patch = useMission((s) => s.patch);
   const [editing, setEditing] = useState(false);
 
   const [now, setNow] = useState(() => Date.now());
@@ -226,31 +237,57 @@ export function Countdown() {
                   <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                     Start Date
                   </span>
-                  <input
-                    type="date"
-                    value={istInputValue(missionStart)}
-                    onChange={(e) =>
-                      patch({
-                        missionStart: istDateInputToISO(e.target.value),
-                      })
-                    }
-                    className="rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={fmtYMD(missionStart)}
+                      placeholder="yyyy-mm-dd"
+                      onChange={(e) => {
+                        const nextISO = parseYMD(e.target.value);
+                        if (nextISO) patch({ missionStart: nextISO });
+                      }}
+                      className="flex-1 rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30 font-mono tabular-nums"
+                    />
+                    <input
+                      type="date"
+                      value={fmtYMD(missionStart)}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const nextISO = parseYMD(e.target.value);
+                          if (nextISO) patch({ missionStart: nextISO });
+                        }
+                      }}
+                      className="w-10 h-10 rounded-xl bg-black/40 border border-white/10 text-foreground outline-none focus:border-white/30 cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
+                  </div>
                 </label>
                 <label className="flex flex-col gap-2">
                   <span className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
                     Goal / Target Date
                   </span>
-                  <input
-                    type="date"
-                    value={istInputValue(missionTarget)}
-                    onChange={(e) =>
-                      patch({
-                        missionTarget: istDateInputToISO(e.target.value),
-                      })
-                    }
-                    className="rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30"
-                  />
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={fmtYMD(missionTarget)}
+                      placeholder="yyyy-mm-dd"
+                      onChange={(e) => {
+                        const nextISO = parseYMD(e.target.value);
+                        if (nextISO) patch({ missionTarget: nextISO });
+                      }}
+                      className="flex-1 rounded-xl bg-black/40 border border-white/10 px-4 py-3 text-foreground outline-none focus:border-white/30 font-mono tabular-nums"
+                    />
+                    <input
+                      type="date"
+                      value={fmtYMD(missionTarget)}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const nextISO = parseYMD(e.target.value);
+                          if (nextISO) patch({ missionTarget: nextISO });
+                        }
+                      }}
+                      className="w-10 h-10 rounded-xl bg-black/40 border border-white/10 text-foreground outline-none focus:border-white/30 cursor-pointer [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                    />
+                  </div>
                 </label>
               </div>
               <button

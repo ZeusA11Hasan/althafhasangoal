@@ -8,14 +8,12 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  BarChart,
+  Bar,
 } from "recharts";
-import {
-  format,
-  parseISO,
-  startOfWeek,
-  startOfMonth,
-} from "date-fns";
+import { format, parseISO, startOfWeek, startOfMonth } from "date-fns";
 import { useMission } from "@/lib/mission/store";
+import { useTaskHoursChart } from "@/lib/timeTracking/hooks";
 
 type Gran = "day" | "week" | "month";
 
@@ -44,11 +42,106 @@ function bucketLabel(key: string, g: Gran) {
   return format(parseISO(key), g === "week" ? "MMM d" : "MMM d");
 }
 
-export function TaskHoursChart() {
-  const { days } = useMission();
+export function TaskHoursChart({ date }: { date?: string }) {
+  const days = useMission((s) => s.days);
+  const chartData = useTaskHoursChart();
   const [gran, setGran] = useState<Gran>("day");
 
+  // Single Day View logic
+  if (date) {
+    const day = days[date];
+    const tasks = day?.tasks ?? [];
+    const localChartData = tasks
+      .map((t) => ({
+        name: t.title.trim() || "Untitled",
+        hours: t.actualHours || 0,
+      }))
+      .filter((t) => t.hours > 0);
+
+    const isEmpty = localChartData.length === 0;
+
+    return (
+      <div className="rounded-2xl border border-white/10 bg-black/30 p-6">
+        <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-4">
+          Task Hours · {format(parseISO(date), "MMM d, yyyy")}
+        </div>
+        {isEmpty ? (
+          <div className="h-[240px] flex flex-col items-center justify-center text-center text-muted-foreground">
+            <div className="text-sm">No tracked task hours for this day.</div>
+            <div className="text-[11px] mt-2 uppercase tracking-[0.3em]">
+              Log time using the Focus Timer to see data here.
+            </div>
+          </div>
+        ) : (
+          <div className="h-[280px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={localChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 10 }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "rgba(0,0,0,0.9)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 12,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: "rgba(255,255,255,0.6)" }}
+                />
+                <Bar dataKey="hours" fill="#ffffff" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Multi-day logic — dynamic task series from AnalyticsService
   const { data, taskNames } = useMemo(() => {
+    if (chartData?.data && chartData.taskNames.length > 0) {
+      if (gran === "day") {
+        return {
+          data: chartData.data,
+          taskNames: chartData.taskNames,
+        };
+      }
+
+      // Bucket by week/month
+      const names = chartData.taskNames;
+      const buckets = new Map<string, Record<string, number>>();
+
+      chartData.data.forEach((pt) => {
+        const k = bucketKey(pt.date, gran);
+        if (!buckets.has(k)) buckets.set(k, {});
+        const row = buckets.get(k)!;
+        for (const n of names) {
+          const val = (pt[n] as number) ?? 0;
+          row[n] = (row[n] ?? 0) + val;
+        }
+      });
+
+      const bucketed = Array.from(buckets.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([k, row]) => ({
+          key: k,
+          label: bucketLabel(k, gran),
+          ...row,
+        }));
+
+      return { data: bucketed, taskNames: names };
+    }
+
+    // Fallback to legacy day data
     const names = new Set<string>();
     const buckets = new Map<string, Record<string, number>>();
 
@@ -68,7 +161,7 @@ export function TaskHoursChart() {
       .map(([k, row]) => ({ key: k, label: bucketLabel(k, gran), ...row }));
 
     return { data, taskNames: Array.from(names) };
-  }, [days, gran]);
+  }, [chartData, days, gran]);
 
   const empty = taskNames.length === 0;
 
@@ -90,9 +183,7 @@ export function TaskHoursChart() {
                 key={g}
                 onClick={() => setGran(g)}
                 className={`px-4 py-1.5 text-[10px] uppercase tracking-[0.3em] rounded-full transition ${
-                  gran === g
-                    ? "bg-white text-black"
-                    : "text-muted-foreground hover:text-foreground"
+                  gran === g ? "bg-white text-black" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {g}s

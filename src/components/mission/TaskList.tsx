@@ -39,8 +39,13 @@ function LiveTimer({ task }: { task: Task }) {
 }
 
 export function TaskList({ date }: { date: string }) {
-  const { days, addTask, updateTask, deleteTask, startTimer, pauseTimer, stopTimer } =
-    useMission();
+  const days = useMission((s) => s.days);
+  const addTask = useMission((s) => s.addTask);
+  const updateTask = useMission((s) => s.updateTask);
+  const deleteTask = useMission((s) => s.deleteTask);
+  const startTimer = useMission((s) => s.startTimer);
+  const pauseTimer = useMission((s) => s.pauseTimer);
+  const stopTimer = useMission((s) => s.stopTimer);
   const tasks = days[date]?.tasks ?? [];
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({
@@ -167,9 +172,8 @@ export function TaskList({ date }: { date: string }) {
               </select>
               <div className="flex-1 min-w-0">
                 <div
-                  className={`text-sm text-foreground ${
-                    t.status === "completed" ? "line-through opacity-60" : ""
-                  } ${t.status === "cancelled" ? "line-through opacity-40" : ""}`}
+                  className={`text-sm text-foreground ${t.status === "completed" ? "line-through opacity-60" : ""
+                    } ${t.status === "cancelled" ? "line-through opacity-40" : ""}`}
                 >
                   {t.title}
                 </div>

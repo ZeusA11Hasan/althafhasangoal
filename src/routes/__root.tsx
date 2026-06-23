@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { useSessionRecovery } from "@/lib/timeTracking/hooks";
 
 function NotFoundComponent() {
   return (
@@ -78,17 +79,37 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Mission Control Pro is a personal operating system for entrepreneurs, tracking financial goals and daily progress." },
+      {
+        name: "description",
+        content:
+          "Mission Control Pro is a personal operating system for entrepreneurs, tracking financial goals and daily progress.",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Mission Control Pro is a personal operating system for entrepreneurs, tracking financial goals and daily progress." },
+      {
+        property: "og:description",
+        content:
+          "Mission Control Pro is a personal operating system for entrepreneurs, tracking financial goals and daily progress.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Mission Control Pro is a personal operating system for entrepreneurs, tracking financial goals and daily progress." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bfb60249-537a-4494-b1f7-a5c540ab3871/id-preview-54c38783--ceb1b1d1-bca4-4496-b249-bda7e23ba2b2.lovable.app-1781079937580.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bfb60249-537a-4494-b1f7-a5c540ab3871/id-preview-54c38783--ceb1b1d1-bca4-4496-b249-bda7e23ba2b2.lovable.app-1781079937580.png" },
+      {
+        name: "twitter:description",
+        content:
+          "Mission Control Pro is a personal operating system for entrepreneurs, tracking financial goals and daily progress.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bfb60249-537a-4494-b1f7-a5c540ab3871/id-preview-54c38783--ceb1b1d1-bca4-4496-b249-bda7e23ba2b2.lovable.app-1781079937580.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/bfb60249-537a-4494-b1f7-a5c540ab3871/id-preview-54c38783--ceb1b1d1-bca4-4496-b249-bda7e23ba2b2.lovable.app-1781079937580.png",
+      },
     ],
     links: [
       {
@@ -125,6 +146,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  useSessionRecovery();
 
   return (
     <QueryClientProvider client={queryClient}>

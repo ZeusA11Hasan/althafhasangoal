@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { useMission, todayKey } from "@/lib/mission/store";
+import { useAnalyticsData } from "@/lib/timeTracking/hooks";
 import { fmtINR } from "@/lib/mission/format";
 
 function useAnimatedNumber(value: number) {
@@ -48,48 +49,53 @@ function MetricCard({
       className="neu p-6 relative overflow-hidden"
     >
       <div className="absolute -top-12 -right-12 h-32 w-32 rounded-full bg-white/[0.02] blur-2xl" />
-      <div className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">{label}</div>
       <div className="mt-4 flex items-baseline gap-2">
         <div className="text-display text-4xl text-foreground tabular-nums">
           {formatter ? formatter(animated) : Math.round(animated).toLocaleString()}
         </div>
         {unit && (
-          <div className="text-sm text-muted-foreground uppercase tracking-widest">
-            {unit}
-          </div>
+          <div className="text-sm text-muted-foreground uppercase tracking-widest">{unit}</div>
         )}
       </div>
-      {sub && (
-        <div className="mt-2 text-[11px] text-muted-foreground tracking-wide">{sub}</div>
-      )}
+      {sub && <div className="mt-2 text-[11px] text-muted-foreground tracking-wide">{sub}</div>}
     </motion.div>
   );
 }
 
 export function Metrics() {
-  const m = useMission();
-  const today = m.days[todayKey()];
+  const days = useMission((s) => s.days);
+  const monthlyRevenue = useMission((s) => s.monthlyRevenue);
+  const today = days[todayKey()];
+  const { snapshot } = useAnalyticsData();
 
-  const last7 = Object.values(m.days)
+  const last7 = Object.values(days)
     .sort((a, b) => b.date.localeCompare(a.date))
     .slice(0, 7);
   const sleepAvg =
-    last7.reduce((s, d) => s + (d.sleepHours ?? 7.2), 0) / Math.max(1, last7.length);
-  const workoutStreak = (() => {
-    let n = 0;
-    for (let i = 0; ; i++) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const k = d.toISOString().slice(0, 10);
-      if (m.days[k]?.workoutDone) n++;
-      else break;
-    }
-    return n;
-  })();
+    last7.reduce((s: number, d: { sleepHours?: number }) => s + (d.sleepHours ?? 7.2), 0) /
+    Math.max(1, last7.length);
+
+  const workoutStreak =
+    snapshot?.workoutStreak ??
+    (() => {
+      let n = 0;
+      for (let i = 0; ; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const k = d.toISOString().slice(0, 10);
+        if (days[k]?.workoutDone) n++;
+        else break;
+      }
+      return n;
+    })();
+
   const readingMin = today?.readingMinutes ?? 25;
-  const deepWork = today?.deepWorkHours ?? Math.max(0, (today?.hoursWorked ?? 0) - 2);
+  // Deep work from snapshot first, then fallback
+  const deepWork =
+    snapshot?.dailyHours && snapshot.dailyHours > 2
+      ? snapshot.dailyHours - 2
+      : (today?.deepWorkHours ?? Math.max(0, (today?.hoursWorked ?? 0) - 2));
   const outreach = today?.outreachSent ?? today?.coldCalls ?? 0;
 
   return (
@@ -121,7 +127,7 @@ export function Metrics() {
           />
           <MetricCard
             label="Revenue · Month"
-            value={m.monthlyRevenue}
+            value={monthlyRevenue}
             sub="Target ₹1Cr/mo by Jun 2029"
             formatter={(n) => fmtINR(n)}
             delay={0.1}

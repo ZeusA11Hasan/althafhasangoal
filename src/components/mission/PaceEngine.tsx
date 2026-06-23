@@ -21,15 +21,15 @@ const RANGES: { id: Range; label: string }[] = [
 ];
 
 export function PaceEngine() {
-  const m = useMission();
+  const days = useMission((s) => s.days);
   const [range, setRange] = useState<Range>("days");
 
   const totalRevenue = useMemo(
-    () => Object.values(m.days).reduce((s, d) => s + (d.revenueGenerated ?? 0), 0),
-    [m.days],
+    () => Object.values(days).reduce((s: number, d: { revenueGenerated?: number }) => s + (d.revenueGenerated ?? 0), 0),
+    [days],
   );
 
-  const data = useMemo(() => buildSeries(m.days, range), [m.days, range]);
+  const data = useMemo(() => buildSeries(days, range), [days, range]);
 
   const delta = useMemo(() => {
     if (data.length < 2) return 0;
@@ -79,58 +79,67 @@ export function PaceEngine() {
             <SegmentedToggle value={range} onChange={setRange} />
           </div>
 
-          <div style={{ width: "100%", height: 360 }}>
-            <ResponsiveContainer>
-              <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#fff" stopOpacity={0.5} />
-                    <stop offset="100%" stopColor="#fff" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  stroke="#7A7A7A"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#7A7A7A"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(v) =>
-                    v >= 10000000
-                      ? `${(v / 10000000).toFixed(1)}Cr`
-                      : v >= 100000
-                        ? `${(v / 100000).toFixed(1)}L`
-                        : v >= 1000
-                          ? `${Math.round(v / 1000)}k`
-                          : `${v}`
-                  }
-                />
-                <Tooltip
-                  cursor={{ stroke: "rgba(255,255,255,0.15)" }}
-                  contentStyle={{
-                    background: "rgba(15,15,15,0.95)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 12,
-                    fontSize: 12,
-                  }}
-                  formatter={(v: number) => fmtINR(v)}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="value"
-                  stroke="#fff"
-                  strokeWidth={2}
-                  fill="url(#rev-grad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
+          {data.length === 0 || data.every((d) => d.value === 0) ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="text-sm text-muted-foreground">No revenue data yet.</div>
+              <div className="text-[11px] mt-2 uppercase tracking-[0.3em] text-muted-foreground/60">
+                Log revenue in the Calendar or Financial section to see your pace.
+              </div>
+            </div>
+          ) : (
+            <div style={{ width: "100%", height: 360 }}>
+              <ResponsiveContainer>
+                <AreaChart data={data} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#fff" stopOpacity={0.5} />
+                      <stop offset="100%" stopColor="#fff" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    stroke="#7A7A7A"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#7A7A7A"
+                    fontSize={10}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(v) =>
+                      v >= 10000000
+                        ? `${(v / 10000000).toFixed(1)}Cr`
+                        : v >= 100000
+                          ? `${(v / 100000).toFixed(1)}L`
+                          : v >= 1000
+                            ? `${Math.round(v / 1000)}k`
+                            : `${v}`
+                    }
+                  />
+                  <Tooltip
+                    cursor={{ stroke: "rgba(255,255,255,0.15)" }}
+                    contentStyle={{
+                      background: "rgba(15,15,15,0.95)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      fontSize: 12,
+                    }}
+                    formatter={(v: number) => fmtINR(v)}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#fff"
+                    strokeWidth={2}
+                    fill="url(#rev-grad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </motion.div>
       </div>
     </section>
@@ -153,9 +162,8 @@ function SegmentedToggle({
             <button
               key={r.id}
               onClick={() => onChange(r.id)}
-              className={`relative px-5 py-2 text-[11px] uppercase tracking-[0.25em] rounded-full transition-colors ${
-                active ? "text-background" : "text-muted-foreground hover:text-foreground"
-              }`}
+              className={`relative px-5 py-2 text-[11px] uppercase tracking-[0.25em] rounded-full transition-colors ${active ? "text-background" : "text-muted-foreground hover:text-foreground"
+                }`}
             >
               {active && (
                 <motion.div

@@ -13,6 +13,7 @@ import {
 import { useMemo } from "react";
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 import { useMission, todayKey } from "@/lib/mission/store";
+import { useAnalyticsData } from "@/lib/timeTracking/hooks";
 import { fmtINR } from "@/lib/mission/format";
 
 function calcStreak(days: Record<string, { hoursWorked: number; date: string }>) {
@@ -47,37 +48,74 @@ function calcStreak(days: Record<string, { hoursWorked: number; date: string }>)
 }
 
 export function Productivity() {
-  const m = useMission();
+  const days = useMission((s) => s.days);
+  const revenueTarget = useMission((s) => s.revenueTarget);
+  const currentRevenue = useMission((s) => s.currentRevenue);
+  const dailyMission = useMission((s) => s.dailyMission);
+  const { snapshot } = useAnalyticsData();
 
   const sorted = useMemo(
-    () => Object.values(m.days).sort((a, b) => a.date.localeCompare(b.date)),
-    [m.days],
+    () => Object.values(days).sort((a, b) => a.date.localeCompare(b.date)),
+    [days],
   );
-  const data = sorted.map((d) => ({
-    label: format(parseISO(d.date), "MMM d"),
-    hours: d.hoursWorked,
-    tasks: d.tasksCompleted,
-    revenue: d.revenueGenerated,
-  }));
 
-  const today = m.days[todayKey()];
-  const dailyHours = today?.hoursWorked ?? 0;
-  const weeklyHours = sorted.slice(-7).reduce((s, d) => s + d.hoursWorked, 0);
-  const monthlyHours = sorted.slice(-30).reduce((s, d) => s + d.hoursWorked, 0);
+  // Chart data now comes from AnalyticsService dailyAggregates
+  const data = useMemo(() => {
+    if (snapshot?.dailyAggregates) {
+      return snapshot.dailyAggregates.map((d) => ({
+        label: format(parseISO(d.date), "MMM d"),
+        hours: d.hoursWorked,
+        tasks: d.completedCount,
+        revenue: d.revenue,
+      }));
+    }
+    // Fallback to legacy day data
+    return sorted.map(
+      (d: {
+        date: string;
+        hoursWorked: number;
+        tasksCompleted: number;
+        revenueGenerated: number;
+      }) => ({
+        label: format(parseISO(d.date), "MMM d"),
+        hours: d.hoursWorked,
+        tasks: d.tasksCompleted,
+        revenue: d.revenueGenerated,
+      }),
+    );
+  }, [snapshot, sorted]);
 
-  const totalTasks = sorted.reduce(
-    (s, d) => s + d.tasksCompleted + d.tasksCancelled,
-    0,
-  );
-  const completed = sorted.reduce((s, d) => s + d.tasksCompleted, 0);
-  const completionRate = totalTasks ? (completed / totalTasks) * 100 : 0;
-  const deepWork = sorted.reduce((s, d) => s + Math.max(0, d.hoursWorked - 2), 0);
+  const today = days[todayKey()];
 
-  const streak = calcStreak(m.days);
+  // All KPIs now derive from AnalyticsService snapshot first, then fallback
+  const dailyHours = snapshot?.dailyHours ?? today?.hoursWorked ?? 0;
+  const weeklyHours =
+    snapshot?.weeklyHours ??
+    sorted.slice(-7).reduce((s: number, d: { hoursWorked: number }) => s + d.hoursWorked, 0);
+  const monthlyHours =
+    snapshot?.monthlyHours ??
+    sorted.slice(-30).reduce((s: number, d: { hoursWorked: number }) => s + d.hoursWorked, 0);
+
+  const totalTasks =
+    snapshot?.totalTasks ??
+    sorted.reduce(
+      (s: number, d: { tasksCompleted: number; tasksCancelled: number }) =>
+        s + d.tasksCompleted + d.tasksCancelled,
+      0,
+    );
+  const completed = snapshot?.totalTasks
+    ? Math.round((snapshot.completionRate / 100) * snapshot.totalTasks)
+    : sorted.reduce((s: number, d: { tasksCompleted: number }) => s + d.tasksCompleted, 0);
+  const completionRate =
+    snapshot?.completionRate ?? (totalTasks ? (completed / totalTasks) * 100 : 0);
+  const deepWork =
+    snapshot?.deepWorkHours ??
+    sorted.reduce((s: number, d: { hoursWorked: number }) => s + Math.max(0, d.hoursWorked - 2), 0);
+
+  const streak = snapshot?.streak ?? calcStreak(days);
 
   // Founder Score
-  const revPct =
-    m.revenueTarget > 0 ? Math.min(1, m.currentRevenue / m.revenueTarget) : 0;
+  const revPct = revenueTarget > 0 ? Math.min(1, currentRevenue / revenueTarget) : 0;
   const score = Math.round(
     Math.min(100, dailyHours * 6) * 0.25 +
       Math.min(100, (today?.tasksCompleted ?? 0) * 12) * 0.2 +
@@ -197,10 +235,22 @@ export function Productivity() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="label" stroke="#7A7A7A" fontSize={10} tickLine={false} axisLine={false} />
+                <XAxis
+                  dataKey="label"
+                  stroke="#7A7A7A"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <YAxis stroke="#7A7A7A" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip {...chartTip} />
-                <Area type="monotone" dataKey="hours" stroke="#fff" strokeWidth={2} fill="url(#g1)" />
+                <Area
+                  type="monotone"
+                  dataKey="hours"
+                  stroke="#fff"
+                  strokeWidth={2}
+                  fill="url(#g1)"
+                />
               </AreaChart>
             </ResponsiveContainer>
           </Chart>
@@ -209,7 +259,13 @@ export function Productivity() {
             <ResponsiveContainer>
               <BarChart data={data}>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="label" stroke="#7A7A7A" fontSize={10} tickLine={false} axisLine={false} />
+                <XAxis
+                  dataKey="label"
+                  stroke="#7A7A7A"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <YAxis stroke="#7A7A7A" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip {...chartTip} />
                 <Bar dataKey="tasks" fill="#ffffff" radius={[4, 4, 0, 0]} />
@@ -227,7 +283,13 @@ export function Productivity() {
                   </linearGradient>
                 </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="label" stroke="#7A7A7A" fontSize={10} tickLine={false} axisLine={false} />
+                <XAxis
+                  dataKey="label"
+                  stroke="#7A7A7A"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
                 <YAxis
                   stroke="#7A7A7A"
                   fontSize={10}
@@ -235,11 +297,14 @@ export function Productivity() {
                   axisLine={false}
                   tickFormatter={(v) => `${v / 1000}k`}
                 />
-                <Tooltip
-                  {...chartTip}
-                  formatter={(v: number) => fmtINR(v)}
+                <Tooltip {...chartTip} formatter={(v: number) => fmtINR(v)} />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#fff"
+                  strokeWidth={2}
+                  fill="url(#g2)"
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#fff" strokeWidth={2} fill="url(#g2)" />
               </AreaChart>
             </ResponsiveContainer>
           </Chart>
@@ -268,9 +333,7 @@ const chartTip = {
 function Mini({ label, value }: { label: string; value: string }) {
   return (
     <div className="neu-inset py-3">
-      <div className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground">{label}</div>
       <div className="text-display text-xl text-foreground tabular-nums mt-1">{value}</div>
     </div>
   );
@@ -285,9 +348,7 @@ function Stat3({ label, value, unit }: { label: string; value: string; unit: str
       transition={{ duration: 0.5 }}
       className="neu p-5 col-span-6 lg:col-span-2"
     >
-      <div className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[9px] uppercase tracking-[0.3em] text-muted-foreground">{label}</div>
       <div className="text-display text-3xl text-foreground tabular-nums mt-2">
         {value}
         <span className="text-base text-muted-foreground ml-1">{unit}</span>

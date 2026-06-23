@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useMission } from "@/lib/mission/store";
 
 export function VisionBoard() {
-  const { visions } = useMission();
+  const visions = useMission((s) => s.visions);
   return (
     <section className="relative w-full py-32 px-6 overflow-hidden">
       <div className="pointer-events-none absolute inset-0">

@@ -71,20 +71,28 @@
 :root {
   --radius: 1rem;
   /* Mission 2029 — matte black luxury palette */
-  --background: oklch(0.145 0 0);          /* #0D0D0D */
-  --foreground: oklch(0.965 0 0);          /* #F5F5F5 */
-  --card: oklch(0.18 0 0);                 /* #151515 */
+  --background: oklch(0.145 0 0);
+  /* #0D0D0D */
+  --foreground: oklch(0.965 0 0);
+  /* #F5F5F5 */
+  --card: oklch(0.18 0 0);
+  /* #151515 */
   --card-foreground: oklch(0.965 0 0);
-  --surface: oklch(0.18 0 0);              /* #151515 */
-  --surface-2: oklch(0.22 0 0);            /* #1D1D1D */
+  --surface: oklch(0.18 0 0);
+  /* #151515 */
+  --surface-2: oklch(0.22 0 0);
+  /* #1D1D1D */
   --popover: oklch(0.18 0 0);
   --popover-foreground: oklch(0.965 0 0);
-  --primary: oklch(0.985 0 0);             /* white */
-  --primary-foreground: oklch(0.145 0 0);  /* black */
+  --primary: oklch(0.985 0 0);
+  /* white */
+  --primary-foreground: oklch(0.145 0 0);
+  /* black */
   --secondary: oklch(0.22 0 0);
   --secondary-foreground: oklch(0.965 0 0);
   --muted: oklch(0.22 0 0);
-  --muted-foreground: oklch(0.56 0 0);     /* #7A7A7A */
+  --muted-foreground: oklch(0.56 0 0);
+  /* #7A7A7A */
   --accent: oklch(0.28 0 0);
   --accent-foreground: oklch(0.965 0 0);
   --destructive: oklch(0.55 0.18 28);
@@ -109,9 +117,9 @@
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(1 0 0 / 25%);
 
-  --shadow-neu: 8px 8px 24px rgba(0,0,0,0.6), -2px -2px 12px rgba(255,255,255,0.02);
-  --shadow-neu-inset: inset 4px 4px 12px rgba(0,0,0,0.5), inset -2px -2px 8px rgba(255,255,255,0.02);
-  --shadow-elev: 0 30px 80px -20px rgba(0,0,0,0.8);
+  --shadow-neu: 8px 8px 24px rgba(0, 0, 0, 0.6), -2px -2px 12px rgba(255, 255, 255, 0.02);
+  --shadow-neu-inset: inset 4px 4px 12px rgba(0, 0, 0, 0.5), inset -2px -2px 8px rgba(255, 255, 255, 0.02);
+  --shadow-elev: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
 }
 
 @layer base {
@@ -127,30 +135,124 @@
     font-feature-settings: "ss01", "cv11";
   }
 
-  html, body {
+  html,
+  body {
     background: #0D0D0D;
   }
+}
+
+/* ───────────────────────────────────────────────
+   Global Glassmorphism Scrollbar System
+   Applies to every scrollable container across
+   the entire application.
+   ─────────────────────────────────────────────── */
+
+/* Firefox — thin, dark-themed scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* WebKit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track-piece {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.26);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Remove default scrollbar buttons/arrows */
+::-webkit-scrollbar-button {
+  display: none;
+  height: 0;
+  width: 0;
+  background: transparent;
+}
+
+/* Horizontal scrollbar — minimal, only appears when content overflows */
+::-webkit-scrollbar:horizontal {
+  height: 6px;
+}
+
+::-webkit-scrollbar-thumb:horizontal {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.03);
+}
+
+::-webkit-scrollbar-thumb:horizontal:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Scrollable containers that use overflow-auto/scroll */
+.overflow-auto,
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-scroll,
+.overflow-y-scroll,
+.overflow-x-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* Radix ScrollArea — hide native scrollbar, let custom thumb take over */
+[data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  display: none;
+}
+
+[data-radix-scroll-area-viewport] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 @utility neu {
   background: linear-gradient(145deg, #151515, #101010);
   box-shadow: var(--shadow-neu);
-  border: 1px solid rgba(255,255,255,0.04);
+  border: 1px solid rgba(255, 255, 255, 0.04);
   border-radius: 1.25rem;
 }
 
 @utility neu-inset {
   background: #101010;
   box-shadow: var(--shadow-neu-inset);
-  border: 1px solid rgba(255,255,255,0.03);
+  border: 1px solid rgba(255, 255, 255, 0.03);
   border-radius: 1rem;
 }
 
 @utility glass {
-  background: rgba(21,21,21,0.6);
+  background: rgba(21, 21, 21, 0.6);
   backdrop-filter: blur(24px) saturate(140%);
   -webkit-backdrop-filter: blur(24px) saturate(140%);
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 @utility text-display {
@@ -162,6 +264,7 @@
 
 @utility grain {
   position: relative;
+
   &::after {
     content: "";
     position: absolute;

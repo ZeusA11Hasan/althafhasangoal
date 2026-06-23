@@ -35,9 +35,8 @@ function Row({ label, value, accent }: { label: string; value: string; accent?: 
     <div className="flex items-baseline justify-between py-2 border-b border-white/[0.04] last:border-0">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span
-        className={`text-display tabular-nums ${
-          accent ? "text-3xl text-foreground" : "text-lg text-foreground/80"
-        }`}
+        className={`text-display tabular-nums ${accent ? "text-3xl text-foreground" : "text-lg text-foreground/80"
+          }`}
       >
         {value}
       </span>
@@ -115,15 +114,24 @@ function Radial({
 }
 
 export function Financial() {
-  const m = useMission();
+  const missionTarget = useMission((s) => s.missionTarget);
+  const revenueTarget = useMission((s) => s.revenueTarget);
+  const currentRevenue = useMission((s) => s.currentRevenue);
+  const clientTarget = useMission((s) => s.clientTarget);
+  const currentClients = useMission((s) => s.currentClients);
+  const coldCalls = useMission((s) => s.coldCalls);
+  const followUps = useMission((s) => s.followUps);
+  const dealsClosed = useMission((s) => s.dealsClosed);
+  const days = useMission((s) => s.days);
+  const patch = useMission((s) => s.patch);
   const [open, setOpen] = useState(false);
 
-  const remainingRev = Math.max(0, m.revenueTarget - m.currentRevenue);
-  const remainingClients = Math.max(0, m.clientTarget - m.currentClients);
+  const remainingRev = Math.max(0, revenueTarget - currentRevenue);
+  const remainingClients = Math.max(0, clientTarget - currentClients);
 
   const daysRemaining = useMemo(
-    () => Math.max(1, differenceInDays(new Date(m.missionTarget), new Date())),
-    [m.missionTarget],
+    () => Math.max(1, differenceInDays(new Date(missionTarget), new Date())),
+    [missionTarget],
   );
   // 30-day pace for ₹1L mission feels right too — we surface both.
   const days30 = 30;
@@ -132,12 +140,12 @@ export function Financial() {
   const reqPerWeek = reqPerDay * 7;
   const reqPerMonth = reqPerDay * 30;
 
-  const closeRate = m.coldCalls > 0 ? (m.dealsClosed / m.coldCalls) * 100 : 0;
-  const followUpRate = m.coldCalls > 0 ? (m.followUps / m.coldCalls) * 100 : 0;
+  const closeRate = coldCalls > 0 ? (dealsClosed / coldCalls) * 100 : 0;
+  const followUpRate = coldCalls > 0 ? (followUps / coldCalls) * 100 : 0;
   const clientsPerMonth = Math.ceil(remainingClients / Math.max(1, days30 / 30));
   const callsPerDay = Math.ceil(remainingClients / Math.max(1, days30) / Math.max(0.05, closeRate / 100 || 0.1));
 
-  const revPct = m.revenueTarget > 0 ? m.currentRevenue / m.revenueTarget : 0;
+  const revPct = revenueTarget > 0 ? currentRevenue / revenueTarget : 0;
   const status =
     revPct >= 0.5 ? "ON TRACK" : revPct >= 0.2 ? "AT RISK" : "OFF TRACK";
   const statusColor =
@@ -167,19 +175,19 @@ export function Financial() {
         {/* Top grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-16">
           <NeuCard title="Revenue Goal" delay={0}>
-            <Row label="Target" value={fmtINR(m.revenueTarget)} />
-            <Row label="Current" value={fmtINR(m.currentRevenue)} accent />
+            <Row label="Target" value={fmtINR(revenueTarget)} />
+            <Row label="Current" value={fmtINR(currentRevenue)} accent />
             <Row label="Remaining" value={fmtINR(remainingRev)} />
           </NeuCard>
           <NeuCard title="Client Goal" delay={0.1}>
-            <Row label="Target" value={`${m.clientTarget}`} />
-            <Row label="Current" value={`${m.currentClients}`} accent />
+            <Row label="Target" value={`${clientTarget}`} />
+            <Row label="Current" value={`${currentClients}`} accent />
             <Row label="Remaining" value={`${remainingClients}`} />
           </NeuCard>
           <NeuCard title="Sales Activity" delay={0.2}>
-            <Row label="Cold Calls" value={`${m.coldCalls}`} />
-            <Row label="Follow Ups" value={`${m.followUps}`} />
-            <Row label="Deals Closed" value={`${m.dealsClosed}`} />
+            <Row label="Cold Calls" value={`${coldCalls}`} />
+            <Row label="Follow Ups" value={`${followUps}`} />
+            <Row label="Deals Closed" value={`${dealsClosed}`} />
             <Row label="Close Rate" value={`${closeRate.toFixed(1)}%`} />
             <Row label="Follow-up Rate" value={`${followUpRate.toFixed(1)}%`} />
           </NeuCard>
@@ -189,8 +197,8 @@ export function Financial() {
         <div className="grid grid-cols-1 lg:grid-cols-[auto_1fr] gap-12 items-center">
           <Radial
             pct={revPct}
-            label={`${fmtINR(m.currentRevenue)} / ${fmtINR(m.revenueTarget)}`}
-            sub={`${m.currentClients} / ${m.clientTarget} clients`}
+            label={`${fmtINR(currentRevenue)} / ${fmtINR(revenueTarget)}`}
+            sub={`${currentClients} / ${clientTarget} clients`}
             onClick={() => setOpen(true)}
           />
 
@@ -225,45 +233,45 @@ export function Financial() {
             label="Revenue Target"
             type="number"
             prefix="₹"
-            value={m.revenueTarget}
-            onChange={(v) => m.setField("revenueTarget", +v)}
+            value={revenueTarget}
+            onChange={(v) => patch({ revenueTarget: +v })}
           />
           <Field
             label="Current Revenue"
             type="number"
             prefix="₹"
-            value={m.currentRevenue}
-            onChange={(v) => m.setField("currentRevenue", +v)}
+            value={currentRevenue}
+            onChange={(v) => patch({ currentRevenue: +v })}
           />
           <Field
             label="Client Target"
             type="number"
-            value={m.clientTarget}
-            onChange={(v) => m.setField("clientTarget", +v)}
+            value={clientTarget}
+            onChange={(v) => patch({ clientTarget: +v })}
           />
           <Field
             label="Current Clients"
             type="number"
-            value={m.currentClients}
-            onChange={(v) => m.setField("currentClients", +v)}
+            value={currentClients}
+            onChange={(v) => patch({ currentClients: +v })}
           />
           <Field
             label="Cold Calls"
             type="number"
-            value={m.coldCalls}
-            onChange={(v) => m.setField("coldCalls", +v)}
+            value={coldCalls}
+            onChange={(v) => patch({ coldCalls: +v })}
           />
           <Field
             label="Follow Ups"
             type="number"
-            value={m.followUps}
-            onChange={(v) => m.setField("followUps", +v)}
+            value={followUps}
+            onChange={(v) => patch({ followUps: +v })}
           />
           <Field
             label="Deals Closed"
             type="number"
-            value={m.dealsClosed}
-            onChange={(v) => m.setField("dealsClosed", +v)}
+            value={dealsClosed}
+            onChange={(v) => patch({ dealsClosed: +v })}
           />
         </div>
         <div className="mt-8 flex justify-end gap-3">

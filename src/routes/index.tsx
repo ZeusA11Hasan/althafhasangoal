@@ -1,20 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { lazy, Suspense, useState } from "react";
 import { Countdown } from "@/components/mission/Countdown";
-import { Financial } from "@/components/mission/Financial";
-import { SalesChart } from "@/components/mission/SalesChart";
-import { Calendar } from "@/components/mission/Calendar";
-import { Productivity } from "@/components/mission/Productivity";
-import { Timeline } from "@/components/mission/Timeline";
-import { TaskHoursChart } from "@/components/mission/TaskHoursChart";
-import { Heatmap } from "@/components/mission/Heatmap";
-import { PaceEngine } from "@/components/mission/PaceEngine";
-import { WorldTour } from "@/components/mission/WorldTour";
 import { DailyExecution } from "@/components/mission/DailyExecution";
-import { VisionBoard } from "@/components/mission/VisionBoard";
-import { WarMode } from "@/components/mission/WarMode";
-import { AICoach } from "@/components/mission/AICoach";
 import { Particles } from "@/components/mission/Particles";
-import { Kanban } from "@/components/mission/Kanban";
+import { Header } from "@/components/mission/Header";
+import { SettingsPanel } from "@/components/mission/SettingsPanel";
+import { SaveIndicator } from "@/components/mission/SaveIndicator";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { PremiumSectionLoader, KanbanLoader, ChartLoader } from "@/components/ui/premium-loaders";
+
+// Above-fold components (Countdown, DailyExecution, Particles) are eagerly loaded.
+// Everything below the fold is lazily loaded for faster initial paint.
+
+const Timeline = lazy(() => import("@/components/mission/Timeline").then((m) => ({ default: m.Timeline })));
+const Financial = lazy(() => import("@/components/mission/Financial").then((m) => ({ default: m.Financial })));
+const PaceEngine = lazy(() => import("@/components/mission/PaceEngine").then((m) => ({ default: m.PaceEngine })));
+const TaskHoursChart = lazy(() => import("@/components/mission/TaskHoursChart").then((m) => ({ default: m.TaskHoursChart })));
+const Productivity = lazy(() => import("@/components/mission/Productivity").then((m) => ({ default: m.Productivity })));
+const Heatmap = lazy(() => import("@/components/mission/Heatmap").then((m) => ({ default: m.Heatmap })));
+const SalesChart = lazy(() => import("@/components/mission/SalesChart").then((m) => ({ default: m.SalesChart })));
+const Calendar = lazy(() => import("@/components/mission/Calendar").then((m) => ({ default: m.Calendar })));
+const Kanban = lazy(() => import("@/components/mission/EnhancedKanban").then((m) => ({ default: m.EnhancedKanban })));
+const WorldTour = lazy(() => import("@/components/mission/WorldTour").then((m) => ({ default: m.WorldTour })));
+const VisionBoard = lazy(() => import("@/components/mission/VisionBoard").then((m) => ({ default: m.VisionBoard })));
+const AICoach = lazy(() => import("@/components/mission/AICoach").then((m) => ({ default: m.AICoach })));
+
+function SectionSkeleton() {
+  return null; // Premium loaders are imported directly into components
+}
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -37,29 +50,42 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useKeyboardShortcuts({
+    onCalendar: () => {
+      // Scroll to calendar section
+      document.querySelector("section")?.scrollIntoView({ behavior: "smooth" });
+    },
+  });
+
   return (
     <main className="relative bg-background text-foreground">
       <Particles />
+      <Header />
       <div className="relative z-10">
         <Countdown />
         <DailyExecution />
-        <Timeline />
-        <Financial />
-        <PaceEngine />
-        <TaskHoursChart />
-        <Productivity />
-        <Heatmap />
-        <SalesChart />
-        <Calendar />
-        <Kanban />
-        <WorldTour />
-        <VisionBoard />
-        <footer className="px-6 py-12 text-center text-[10px] uppercase tracking-[0.4em] text-muted-foreground">
-          Mission 2029 · Built for the obsessed
+        <Suspense fallback={<ChartLoader />}><TaskHoursChart /></Suspense>
+        <Suspense fallback={<PremiumSectionLoader />}><Calendar /></Suspense>
+        <Suspense fallback={<KanbanLoader />}><Kanban /></Suspense>
+        <Suspense fallback={<PremiumSectionLoader />}><Timeline /></Suspense>
+        <Suspense fallback={<ChartLoader />}><Productivity /></Suspense>
+        <Suspense fallback={<ChartLoader />}><Heatmap /></Suspense>
+        <Suspense fallback={<SectionSkeleton />}><WorldTour /></Suspense>
+        <Suspense fallback={<SectionSkeleton />}><VisionBoard /></Suspense>
+        <footer className="px-6 py-12 text-center text-[10px] uppercase tracking-[0.4em] text-muted-foreground flex items-center justify-center gap-6">
+          <span>Mission 2029 · Built for the obsessed</span>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="underline underline-offset-4 hover:text-foreground transition"
+          >
+            Settings
+          </button>
         </footer>
       </div>
-      <WarMode />
-      <AICoach />
+      <SaveIndicator />
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </main>
   );
 }

@@ -15,7 +15,8 @@ import { useMission } from "@/lib/mission/store";
 import { Modal, Field } from "./Modal";
 
 export function SalesChart() {
-  const { days, upsertDay } = useMission();
+  const days = useMission((s) => s.days);
+  const upsertDay = useMission((s) => s.upsertDay);
   const [editing, setEditing] = useState<string | null>(null);
 
   const data = useMemo(() => {
@@ -62,68 +63,77 @@ export function SalesChart() {
             </div>
           </div>
 
-          <div style={{ width: "100%", height: 420 }}>
-            <ResponsiveContainer>
-              <LineChart
-                data={data}
-                margin={{ top: 20, right: 20, bottom: 10, left: 0 }}
-                onClick={(e: any) => {
-                  if (e && e.activeLabel) {
-                    const found = data.find((d) => d.label === e.activeLabel);
-                    if (found) setEditing(found.date);
-                  }
-                }}
-              >
-                <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis
-                  dataKey="label"
-                  stroke="#7A7A7A"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#7A7A7A"
-                  fontSize={11}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <Tooltip
-                  cursor={{ stroke: "rgba(255,255,255,0.15)", strokeWidth: 1 }}
-                  contentStyle={{
-                    background: "rgba(15,15,15,0.95)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 12,
-                    backdropFilter: "blur(12px)",
-                    fontSize: 12,
+          {data.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="text-sm text-muted-foreground">No sales activity logged yet.</div>
+              <div className="text-[11px] mt-2 uppercase tracking-[0.3em] text-muted-foreground/60">
+                Log cold calls, follow-ups, and deals in the Calendar section to see your pipeline.
+              </div>
+            </div>
+          ) : (
+            <div style={{ width: "100%", height: 420 }}>
+              <ResponsiveContainer>
+                <LineChart
+                  data={data}
+                  margin={{ top: 20, right: 20, bottom: 10, left: 0 }}
+                  onClick={(e: any) => {
+                    if (e && e.activeLabel) {
+                      const found = data.find((d) => d.label === e.activeLabel);
+                      if (found) setEditing(found.date);
+                    }
                   }}
-                  labelStyle={{ color: "#7A7A7A", textTransform: "uppercase", letterSpacing: 2, fontSize: 10 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="coldCalls"
-                  stroke="#ffffff"
-                  strokeWidth={2}
-                  dot={{ fill: "#0D0D0D", stroke: "#fff", r: 4, strokeWidth: 2 }}
-                  activeDot={{ r: 7, fill: "#fff" }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="followUps"
-                  stroke="#7A7A7A"
-                  strokeWidth={2}
-                  dot={{ fill: "#0D0D0D", stroke: "#7A7A7A", r: 3, strokeWidth: 2 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="dealsClosed"
-                  stroke="#3a3a3a"
-                  strokeWidth={2}
-                  dot={{ fill: "#0D0D0D", stroke: "#5a5a5a", r: 3, strokeWidth: 2 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+                >
+                  <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    stroke="#7A7A7A"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#7A7A7A"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <Tooltip
+                    cursor={{ stroke: "rgba(255,255,255,0.15)", strokeWidth: 1 }}
+                    contentStyle={{
+                      background: "rgba(15,15,15,0.95)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      backdropFilter: "blur(12px)",
+                      fontSize: 12,
+                    }}
+                    labelStyle={{ color: "#7A7A7A", textTransform: "uppercase", letterSpacing: 2, fontSize: 10 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="coldCalls"
+                    stroke="#ffffff"
+                    strokeWidth={2}
+                    dot={{ fill: "#0D0D0D", stroke: "#fff", r: 4, strokeWidth: 2 }}
+                    activeDot={{ r: 7, fill: "#fff" }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="followUps"
+                    stroke="#7A7A7A"
+                    strokeWidth={2}
+                    dot={{ fill: "#0D0D0D", stroke: "#7A7A7A", r: 3, strokeWidth: 2 }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="dealsClosed"
+                    stroke="#3a3a3a"
+                    strokeWidth={2}
+                    dot={{ fill: "#0D0D0D", stroke: "#5a5a5a", r: 3, strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </motion.div>
       </div>
 

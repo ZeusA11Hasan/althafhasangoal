@@ -38,7 +38,8 @@ const COUNTRIES: Country[] = [
 const REGIONS = ["Asia", "Europe", "North America", "South America", "Africa", "Oceania"];
 
 export function WorldTour() {
-  const { visitedCountries, toggleCountry } = useMission();
+  const visitedCountries = useMission((s) => s.visitedCountries);
+  const toggleCountry = useMission((s) => s.toggleCountry);
   const total = 195;
   const pct = (visitedCountries.length / total) * 100;
 
@@ -116,11 +117,10 @@ export function WorldTour() {
                         <button
                           key={c.code}
                           onClick={() => toggleCountry(c.code)}
-                          className={`px-3 py-1.5 rounded-full text-xs transition border ${
-                            on
+                          className={`px-3 py-1.5 rounded-full text-xs transition border ${on
                               ? "bg-white text-black border-white"
                               : "bg-transparent text-muted-foreground border-white/10 hover:border-white/30 hover:text-foreground"
-                          }`}
+                            }`}
                         >
                           {c.name}
                         </button>

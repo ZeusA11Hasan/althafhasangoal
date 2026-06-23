@@ -1,35 +1,28 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarDays, Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { useMission, type DailyMissionItem } from "@/lib/mission/store";
+import { useMission, type DailyMissionItem, istDateKey } from "@/lib/mission/store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-
-export const PRIORITIES: { id: NonNullable<DailyMissionItem["priority"]>; label: string }[] = [
-  { id: "low", label: "Low" },
-  { id: "medium", label: "Medium" },
-  { id: "high", label: "High" },
-  { id: "critical", label: "Critical" },
-];
-
-export const COLORS = [
-  "#60a5fa",
-  "#a78bfa",
-  "#f43f5e",
-  "#34d399",
-  "#fbbf24",
-  "#22d3ee",
-  "#f97316",
-  "#e5e7eb",
-];
+import { format, parseISO } from "date-fns";
+import { PRIORITIES, COLORS, randomColor } from "@/lib/mission/constants";
+import { DaySchedule } from "./DaySchedule";
 
 export function DailyExecution() {
-  const { dailyMission, toggleDailyMission, addDailyMission } = useMission();
-  const doneCount = dailyMission.filter((d) => d.done).length;
-  const total = Math.max(1, dailyMission.length);
+  const selectedDate = useMission((s) => s.selectedDate);
+  const days = useMission((s) => s.days);
+  const defaultMissions = useMission((s) => s.dailyMission);
+  const toggleDailyMission = useMission((s) => s.toggleDailyMission);
+  const addDailyMission = useMission((s) => s.addDailyMission);
+  const setSelectedDate = useMission((s) => s.setSelectedDate);
+
+  const day = days[selectedDate];
+  const activeMissions = day?.dailyMission ?? defaultMissions;
+  const doneCount = activeMissions.filter((d) => d.done).length;
+  const total = Math.max(1, activeMissions.length);
   const pct = (doneCount / total) * 100;
 
   // Sort: timed slots ascending, untimed last
-  const ordered = [...dailyMission].sort((a, b) => {
+  const ordered = [...activeMissions].sort((a, b) => {
     if (a.startTime && b.startTime) return a.startTime.localeCompare(b.startTime);
     if (a.startTime) return -1;
     if (b.startTime) return 1;
@@ -41,16 +34,44 @@ export function DailyExecution() {
       <div className="mx-auto max-w-7xl">
         <div className="flex items-end justify-between mb-12">
           <div>
-            <div className="text-xs uppercase tracking-[0.4em] text-muted-foreground mb-3">
-              02 · Today's Mission
+            <div className="flex items-center gap-3 text-xs uppercase tracking-[0.4em] text-muted-foreground mb-3">
+              <span>02 · Mission Control</span>
+              {selectedDate !== istDateKey() && (
+                <button
+                  onClick={() => setSelectedDate(istDateKey())}
+                  className="rounded-full bg-white/10 hover:bg-white/20 text-foreground text-[9px] px-2 py-0.5 uppercase tracking-widest transition"
+                >
+                  Reset to Today
+                </button>
+              )}
             </div>
-            <h2 className="text-display text-4xl md:text-6xl text-foreground">
-              Execute. <span className="text-muted-foreground">No excuses.</span>
+            <h2 className="text-display text-4xl md:text-6xl text-foreground flex items-center gap-4">
+              <span>{format(parseISO(selectedDate), "MMM d, yyyy")}</span>
+              <button
+                onClick={() => {
+                  const input = document.getElementById("date-picker-input") as HTMLInputElement | null;
+                  input?.showPicker?.();
+                  input?.focus?.();
+                }}
+                className="neu p-2 rounded-xl hover:bg-white/[0.03] transition"
+                title="Pick a date"
+              >
+                <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <input
+                id="date-picker-input"
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="absolute opacity-0 pointer-events-none"
+              />
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">Execute.</span>
             </h2>
           </div>
           <div className="text-right">
             <div className="text-display text-4xl text-foreground tabular-nums">
-              {doneCount}/{dailyMission.length}
+              {doneCount}/{activeMissions.length}
             </div>
             <div className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
               Completed today
@@ -69,19 +90,19 @@ export function DailyExecution() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <AnimatePresence initial={false}>
               {ordered.map((d) => (
-                <TaskRow key={d.id} item={d} onToggle={() => toggleDailyMission(d.id)} />
+                <TaskRow key={d.id} item={d} date={selectedDate} onToggle={() => toggleDailyMission(selectedDate, d.id)} />
               ))}
             </AnimatePresence>
 
             <button
               onClick={() =>
-                addDailyMission({
+                addDailyMission(selectedDate, {
                   label: "New Task",
                   target: 1,
                   unit: "x",
                   description: "",
                   priority: "medium",
-                  color: COLORS[Math.floor(Math.random() * COLORS.length)],
+                  color: randomColor(),
                   kanban: "today",
                 })
               }
@@ -91,6 +112,17 @@ export function DailyExecution() {
             </button>
           </div>
         </div>
+
+        {/* Visual day schedule */}
+        <div className="mt-8">
+          <div className="flex items-center gap-2 mb-4">
+            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+            <div className="text-[10px] uppercase tracking-[0.35em] text-muted-foreground">
+              Schedule · Double-click empty slot to add
+            </div>
+          </div>
+          <DaySchedule date={selectedDate} />
+        </div>
       </div>
     </section>
   );
@@ -98,12 +130,15 @@ export function DailyExecution() {
 
 function TaskRow({
   item,
+  date,
   onToggle,
 }: {
   item: DailyMissionItem;
+  date: string;
   onToggle: () => void;
 }) {
-  const { updateDailyMission, deleteDailyMission } = useMission();
+  const updateDailyMission = useMission((s) => s.updateDailyMission);
+  const deleteDailyMission = useMission((s) => s.deleteDailyMission);
   const [open, setOpen] = useState(false);
   const color = item.color ?? "#60a5fa";
 
@@ -114,19 +149,17 @@ function TaskRow({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.25 }}
-      className={`group relative flex items-center gap-4 p-4 rounded-2xl border transition text-left ${
-        item.done
-          ? "bg-white/[0.05] border-white/15"
-          : "neu-inset border-transparent hover:bg-white/[0.02]"
-      }`}
+      className={`group relative flex items-center gap-4 p-4 rounded-2xl border transition text-left ${item.done
+        ? "bg-white/[0.05] border-white/15"
+        : "neu-inset border-transparent hover:bg-white/[0.02]"
+        }`}
     >
       <button
         onClick={onToggle}
-        className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center border transition ${
-          item.done
-            ? "bg-white text-black border-white"
-            : "border-white/20 text-transparent hover:border-white/50"
-        }`}
+        className={`h-7 w-7 shrink-0 rounded-full flex items-center justify-center border transition ${item.done
+          ? "bg-white text-black border-white"
+          : "border-white/20 text-transparent hover:border-white/50"
+          }`}
       >
         <Check className="h-4 w-4" />
       </button>
@@ -139,9 +172,8 @@ function TaskRow({
             </span>
           )}
           <div
-            className={`text-base truncate ${
-              item.done ? "text-foreground/60 line-through" : "text-foreground"
-            }`}
+            className={`text-base truncate ${item.done ? "text-foreground/60 line-through" : "text-foreground"
+              }`}
           >
             {item.label}
           </div>
@@ -182,10 +214,10 @@ function TaskRow({
         >
           <EditForm
             item={item}
-            onChange={(p) => updateDailyMission(item.id, p)}
+            onChange={(p) => updateDailyMission(date, item.id, p)}
             onDelete={() => {
               setOpen(false);
-              deleteDailyMission(item.id);
+              deleteDailyMission(date, item.id);
             }}
           />
         </PopoverContent>
@@ -270,11 +302,10 @@ export function EditForm({
             <button
               key={p.id}
               onClick={() => onChange({ priority: p.id })}
-              className={`flex-1 text-[10px] uppercase tracking-[0.2em] py-2 rounded-lg border transition ${
-                item.priority === p.id
-                  ? "bg-white text-black border-white"
-                  : "border-white/10 text-muted-foreground hover:text-foreground hover:border-white/30"
-              }`}
+              className={`flex-1 text-[10px] uppercase tracking-[0.2em] py-2 rounded-lg border transition ${item.priority === p.id
+                ? "bg-white text-black border-white"
+                : "border-white/10 text-muted-foreground hover:text-foreground hover:border-white/30"
+                }`}
             >
               {p.label}
             </button>
@@ -288,9 +319,8 @@ export function EditForm({
               key={c}
               onClick={() => onChange({ color: c })}
               aria-label={`Color ${c}`}
-              className={`h-7 w-7 rounded-full border-2 transition ${
-                item.color === c ? "border-white scale-110" : "border-white/10"
-              }`}
+              className={`h-7 w-7 rounded-full border-2 transition ${item.color === c ? "border-white scale-110" : "border-white/10"
+                }`}
               style={{ background: c }}
             />
           ))}

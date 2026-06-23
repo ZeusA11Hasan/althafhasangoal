@@ -2,17 +2,25 @@ import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { addDays, format, parseISO, subDays } from "date-fns";
 import { useMission, type DayEntry } from "@/lib/mission/store";
+import { useAnalyticsData } from "@/lib/timeTracking/hooks";
 import { fmtINR } from "@/lib/mission/format";
 
 type Track = "productive" | "workout" | "learning" | "revenue";
 
-function score(d: DayEntry | undefined, track: Track) {
-  if (!d) return 0;
+function score(
+  d: DayEntry | undefined,
+  track: Track,
+  dailyAgg?: { totalSeconds: number; workoutSeconds: number },
+) {
+  if (!d) {
+    if (track === "productive" && dailyAgg) return Math.min(1, dailyAgg.totalSeconds / 3600 / 9);
+    return 0;
+  }
   switch (track) {
     case "productive":
-      return Math.min(1, d.hoursWorked / 9);
+      return Math.min(1, (d.hoursWorked ?? (dailyAgg ? dailyAgg.totalSeconds / 3600 : 0)) / 9);
     case "workout":
-      return d.workoutDone ? 1 : 0;
+      return d.workoutDone ? 1 : dailyAgg && dailyAgg.workoutSeconds > 0 ? 1 : 0;
     case "learning": {
       const hrs = d.learningHours ?? (d.readingMinutes ?? 0) / 60;
       return Math.min(1, hrs / 2);
@@ -28,9 +36,10 @@ function bg(lvl: number) {
 }
 
 export function Heatmap() {
-  const { days } = useMission();
+  const days = useMission((s) => s.days);
   const [track, setTrack] = useState<Track>("productive");
   const [hover, setHover] = useState<string | null>(null);
+  const { snapshot } = useAnalyticsData();
 
   const cells = useMemo(() => {
     const out: { key: string }[] = [];
@@ -44,7 +53,16 @@ export function Heatmap() {
     return out;
   }, []);
 
+  const dailyMap = useMemo(() => {
+    const map = new Map<string, { totalSeconds: number; workoutSeconds: number }>();
+    snapshot?.dailyAggregates?.forEach((d) =>
+      map.set(d.date, { totalSeconds: d.totalSeconds, workoutSeconds: d.workoutSeconds }),
+    );
+    return map;
+  }, [snapshot]);
+
   const hoveredDay = hover ? days[hover] : null;
+  const hoveredAgg = hover ? dailyMap.get(hover) : null;
 
   return (
     <section className="relative w-full py-24 px-6">
@@ -85,7 +103,8 @@ export function Heatmap() {
               }}
             >
               {cells.map(({ key }) => {
-                const lvl = score(days[key], track);
+                const agg = dailyMap.get(key);
+                const lvl = score(days[key], track, agg);
                 return (
                   <motion.div
                     key={key}
@@ -105,8 +124,10 @@ export function Heatmap() {
                 <span className="text-foreground tabular-nums">
                   {format(parseISO(hover), "MMM d, yyyy")}{" "}
                   <span className="text-muted-foreground">·</span>{" "}
-                  {hoveredDay?.hoursWorked ?? 0}h ·{" "}
-                  {hoveredDay?.tasksCompleted ?? 0} tasks ·{" "}
+                  {hoveredAgg
+                    ? (hoveredAgg.totalSeconds / 3600).toFixed(1)
+                    : (hoveredDay?.hoursWorked ?? 0)}
+                  h · {hoveredDay?.tasksCompleted ?? 0} tasks ·{" "}
                   {fmtINR(hoveredDay?.revenueGenerated ?? 0)}
                 </span>
               ) : (
@@ -116,11 +137,7 @@ export function Heatmap() {
             <div className="flex items-center gap-2">
               <span>Less</span>
               {[0, 0.2, 0.45, 0.7, 1].map((l, i) => (
-                <span
-                  key={i}
-                  className="h-3 w-3 rounded-sm"
-                  style={{ background: bg(l) }}
-                />
+                <span key={i} className="h-3 w-3 rounded-sm" style={{ background: bg(l) }} />
               ))}
               <span>More</span>
             </div>

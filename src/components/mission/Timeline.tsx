@@ -7,8 +7,11 @@ import { fmtINR } from "@/lib/mission/format";
 import { Modal, Field } from "./Modal";
 
 export function Timeline() {
-  const { milestones, missionStart, missionTarget, upsertMilestone, removeMilestone } =
-    useMission();
+  const milestones = useMission((s) => s.milestones);
+  const missionStart = useMission((s) => s.missionStart);
+  const missionTarget = useMission((s) => s.missionTarget);
+  const upsertMilestone = useMission((s) => s.upsertMilestone);
+  const removeMilestone = useMission((s) => s.removeMilestone);
   const [editing, setEditing] = useState<Milestone | null>(null);
 
   const start = new Date(missionStart).getTime();
@@ -103,13 +106,12 @@ export function Timeline() {
                       {format(parseISO(m.targetDate), "MMM yyyy")}
                     </div>
                     <div
-                      className={`text-[9px] uppercase tracking-[0.3em] ${
-                        m.done
+                      className={`text-[9px] uppercase tracking-[0.3em] ${m.done
                           ? "text-success"
                           : days < 0
                             ? "text-danger"
                             : "text-muted-foreground"
-                      }`}
+                        }`}
                     >
                       {m.done ? "● Done" : days < 0 ? "● Missed" : `T-${days}d`}
                     </div>
