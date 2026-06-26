@@ -356,6 +356,7 @@ function KanbanColumn({
     onDrop,
     onAddTask,
     onDeleteColumn,
+    onUpdateColumn,
     canDelete,
     setDragId,
     setSelectedCard,
@@ -371,6 +372,7 @@ function KanbanColumn({
     onDrop: () => void;
     onAddTask: () => void;
     onDeleteColumn: () => void;
+    onUpdateColumn: (patch: Partial<KanbanColumn>) => void;
     canDelete: boolean;
     setDragId: (id: string | null) => void;
     setSelectedCard: (task: DailyMissionItem | null) => void;
@@ -381,21 +383,72 @@ function KanbanColumn({
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            className={`neu p-4 min-h-[400px] flex flex-col gap-3 transition ${isOver ? "ring-2 ring-blue-500/50 bg-blue-500/5" : ""
+            className={`group neu p-4 min-h-[400px] flex flex-col gap-3 transition ${isOver ? "ring-2 ring-blue-500/50 bg-blue-500/5" : ""
                 }`}
         >
             {/* Column Header */}
             <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                    <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: column.color || "#6b7280" }}
-                    />
-                    <div>
-                        <h3 className="text-sm font-semibold text-foreground">{column.label}</h3>
-                        <p className="text-xs text-muted-foreground">{column.hint}</p>
-                    </div>
-                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <button className="flex items-center gap-3 text-left hover:opacity-90 transition">
+                            <div
+                                className="w-3 h-3 rounded-full ring-1 ring-white/10"
+                                style={{ backgroundColor: column.color || "#6b7280" }}
+                            />
+                            <div>
+                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                                    {column.label}
+                                    <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-60 transition" />
+                                </h3>
+                                <p className="text-xs text-muted-foreground">{column.hint}</p>
+                            </div>
+                        </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3 bg-black/95 border-white/20 space-y-3" align="start">
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Name</label>
+                            <input
+                                type="text"
+                                value={column.label}
+                                onChange={(e) => onUpdateColumn({ label: e.target.value })}
+                                className="w-full px-2 py-1.5 bg-black/60 border border-white/10 rounded-md text-sm text-foreground focus:border-white/30 focus:outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Hint</label>
+                            <input
+                                type="text"
+                                value={column.hint}
+                                onChange={(e) => onUpdateColumn({ hint: e.target.value })}
+                                className="w-full px-2 py-1.5 bg-black/60 border border-white/10 rounded-md text-xs text-foreground focus:border-white/30 focus:outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Color</label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {COLORS.map((c) => (
+                                    <button
+                                        key={c}
+                                        onClick={() => onUpdateColumn({ color: c })}
+                                        className={`w-6 h-6 rounded-full ring-2 transition ${
+                                            (column.color || "").toLowerCase() === c.toLowerCase()
+                                                ? "ring-white"
+                                                : "ring-transparent hover:ring-white/40"
+                                        }`}
+                                        style={{ backgroundColor: c }}
+                                    />
+                                ))}
+                                <input
+                                    type="color"
+                                    value={column.color || "#6b7280"}
+                                    onChange={(e) => onUpdateColumn({ color: e.target.value })}
+                                    className="w-6 h-6 rounded-full bg-transparent border-0 cursor-pointer"
+                                    title="Custom color"
+                                />
+                            </div>
+                        </div>
+                    </PopoverContent>
+                </Popover>
 
                 <div className="flex items-center gap-2">
                     <div className="text-xs text-muted-foreground">
@@ -405,7 +458,7 @@ function KanbanColumn({
                         )}
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={onAddTask}
                             className="p-1 hover:bg-white/10 rounded text-muted-foreground hover:text-foreground transition"
