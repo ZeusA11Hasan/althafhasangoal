@@ -22,7 +22,7 @@ class TimeTrackingServiceClass {
 
   /** Subscribe to session state changes (active/inactive) */
   subscribe(cb: () => void) {
-    this.listeners.add(cb);ṅ
+    this.listeners.add(cb);
     return () => this.listeners.delete(cb);
   }
 
