@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { createIdbStorage } from "./idbStorage";
 
 export type TaskStatus = "todo" | "in_progress" | "completed" | "cancelled";
 export type TaskPriority = "low" | "medium" | "high" | "critical";
@@ -92,6 +93,7 @@ export interface DailyMissionItem {
   priority?: "low" | "medium" | "high" | "critical";
   color?: string; // hex
   kanban?: "backlog" | "today" | "doing" | "done";
+  boardId?: string; // which kanban board owns this task (e.g. "home", "revenue")
   startTime?: string; // "HH:MM" 24h IST
   durationMinutes?: number;
 
@@ -114,6 +116,20 @@ export interface DailyMissionItem {
   timerStarted?: number; // timestamp when timer started
   timerAccumulated?: number; // accumulated milliseconds
 }
+
+export interface KanbanColumnDef {
+  id: string;
+  label: string;
+  hint: string;
+  color?: string;
+}
+
+export const DEFAULT_KANBAN_COLUMNS: KanbanColumnDef[] = [
+  { id: "backlog", label: "Backlog", hint: "Ideas & later", color: "#6b7280" },
+  { id: "today", label: "Today", hint: "Committed for today", color: "#3b82f6" },
+  { id: "doing", label: "In Progress", hint: "Active focus", color: "#f59e0b" },
+  { id: "done", label: "Done", hint: "Shipped", color: "#10b981" },
+];
 
 export interface MissionState {
   // Mission target
@@ -144,7 +160,10 @@ export interface MissionState {
   dailyMission: DailyMissionItem[];
   visitedCountries: string[]; // ISO codes or names
   travelBucket: string[];
-  kanbanColumns?: Array<{ id: string; label: string; hint: string }>;
+  /** @deprecated use kanbanBoards */
+  kanbanColumns?: Array<{ id: string; label: string; hint: string; color?: string }>;
+  /** Per-board column configuration. Each board has its own task pool via DailyMissionItem.boardId. */
+  kanbanBoards: Record<string, KanbanColumnDef[]>;
 
   // setters
   setField: <K extends keyof MissionState>(k: K, v: MissionState[K]) => void;
@@ -169,7 +188,9 @@ export interface MissionState {
   updateDailyMission: (date: string, id: string, patch: Partial<DailyMissionItem>) => void;
   deleteDailyMission: (date: string, id: string) => void;
   setKanban: (date: string, id: string, status: NonNullable<DailyMissionItem["kanban"]>) => void;
-  updateKanbanColumns?: (columns: Array<{ id: string; label: string; hint: string }>) => void;
+  /** @deprecated use updateKanbanBoardColumns */
+  updateKanbanColumns?: (columns: Array<{ id: string; label: string; hint: string; color?: string }>) => void;
+  updateKanbanBoardColumns: (boardId: string, columns: KanbanColumnDef[]) => void;
   addVision: (v: Omit<VisionItem, "id">) => void;
   removeVision: (id: string) => void;
 }
@@ -255,6 +276,10 @@ export const useMission = create<MissionState>()(
       ],
       visitedCountries: ["IN"],
       travelBucket: ["JP", "US", "AE", "CH", "IS"],
+      kanbanBoards: {
+        home: DEFAULT_KANBAN_COLUMNS,
+        revenue: DEFAULT_KANBAN_COLUMNS,
+      },
 
       setField: (k, v) => set({ [k]: v } as any),
       patch: (p) => set(p),
@@ -453,6 +478,8 @@ export const useMission = create<MissionState>()(
         get().upsertDay(date, { dailyMission: updated });
       },
       updateKanbanColumns: (columns) => set({ kanbanColumns: columns }),
+      updateKanbanBoardColumns: (boardId, columns) =>
+        set((s) => ({ kanbanBoards: { ...s.kanbanBoards, [boardId]: columns } })),
       addVision: (v) =>
         set((s) => ({
           visions: [...s.visions, { ...v, id: crypto.randomUUID() }],
@@ -460,7 +487,22 @@ export const useMission = create<MissionState>()(
       removeVision: (id) =>
         set((s) => ({ visions: s.visions.filter((v) => v.id !== id) })),
     }),
-    { name: "mission-2029" },
+    {
+      name: "mission-2029",
+      version: 2,
+      storage: createIdbStorage(),
+      migrate: (persistedState: any, version) => {
+        const s = persistedState ?? {};
+        if (!s.kanbanBoards) {
+          const legacy = s.kanbanColumns;
+          s.kanbanBoards = {
+            home: legacy && legacy.length ? legacy : DEFAULT_KANBAN_COLUMNS,
+            revenue: DEFAULT_KANBAN_COLUMNS,
+          };
+        }
+        return s;
+      },
+    },
   ),
 );
 

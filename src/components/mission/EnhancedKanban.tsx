@@ -7,7 +7,13 @@ import {
     Zap, Copy, Archive, Star, X
 } from "lucide-react";
 import { useState, useMemo } from "react";
-import { useMission, type DailyMissionItem, type SubTask, type TaskComment } from "@/lib/mission/store";
+import {
+    useMission,
+    type DailyMissionItem,
+    type SubTask,
+    type TaskComment,
+    DEFAULT_KANBAN_COLUMNS,
+} from "@/lib/mission/store";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { COLORS, randomColor } from "@/lib/mission/constants";
 import { format, parseISO, isToday, isPast, isFuture } from "date-fns";
@@ -22,12 +28,7 @@ interface KanbanColumn {
     limit?: number;
 }
 
-const DEFAULT_COLUMNS: KanbanColumn[] = [
-    { id: "backlog", label: "Backlog", hint: "Ideas & later", color: "#6b7280" },
-    { id: "today", label: "Today", hint: "Committed for today", color: "#3b82f6" },
-    { id: "doing", label: "In Progress", hint: "Active focus", color: "#f59e0b" },
-    { id: "done", label: "Done", hint: "Shipped", color: "#10b981" },
-];
+const DEFAULT_COLUMNS: KanbanColumn[] = DEFAULT_KANBAN_COLUMNS;
 
 const PRIORITIES = [
     { value: "low", label: "Low", color: "#10b981", icon: "↓" },
@@ -36,14 +37,15 @@ const PRIORITIES = [
     { value: "critical", label: "Critical", color: "#dc2626", icon: "⚡" },
 ];
 
-export function EnhancedKanban() {
+export function EnhancedKanban({ boardId = "home", title }: { boardId?: string; title?: string } = {}) {
     const selectedDate = useMission((s) => s.selectedDate);
     const days = useMission((s) => s.days);
     const defaultMissions = useMission((s) => s.dailyMission);
-    const kanbanColumns = useMission((s) => s.kanbanColumns) || DEFAULT_COLUMNS;
+    const kanbanBoards = useMission((s) => s.kanbanBoards);
+    const kanbanColumns = kanbanBoards?.[boardId] ?? DEFAULT_COLUMNS;
+    const updateKanbanBoardColumns = useMission((s) => s.updateKanbanBoardColumns);
     const setKanban = useMission((s) => s.setKanban);
     const addDailyMission = useMission((s) => s.addDailyMission);
-    const updateKanbanColumns = useMission((s) => s.updateKanbanColumns);
     const updateDailyMission = useMission((s) => s.updateDailyMission);
     const deleteDailyMission = useMission((s) => s.deleteDailyMission);
 
@@ -58,7 +60,11 @@ export function EnhancedKanban() {
     const [newTaskColumn, setNewTaskColumn] = useState<string | null>(null);
 
     const day = days[selectedDate];
-    const activeMissions = day?.dailyMission ?? defaultMissions;
+    const sourceMissions = day?.dailyMission ?? defaultMissions;
+    // Scope by boardId. Tasks without a boardId are treated as belonging to "home" for back-compat.
+    const activeMissions = sourceMissions.filter(
+        (m) => (m.boardId ?? "home") === boardId,
+    );
 
     // Get all unique tags for filtering
     const allTags = useMemo(() => {
@@ -109,6 +115,7 @@ export function EnhancedKanban() {
             priority: "medium" as const,
             color: randomColor(),
             kanban: targetColumn as Status,
+            boardId,
             createdAt: new Date().toISOString(),
             tags: [],
             subTasks: [],
@@ -127,6 +134,7 @@ export function EnhancedKanban() {
             label: `${task.label} (Copy)`,
             done: false,
             progress: 0,
+            boardId: task.boardId ?? boardId,
             createdAt: new Date().toISOString(),
             id: undefined, // Will be auto-generated
         };
@@ -134,22 +142,27 @@ export function EnhancedKanban() {
     };
 
     const addColumn = () => {
-        if (updateKanbanColumns) {
-            const newId = `custom_${Date.now()}`;
-            const newColumn: KanbanColumn = {
-                id: newId,
-                label: "New Board",
-                hint: "Custom board",
-                color: randomColor(),
-            };
-            updateKanbanColumns([...kanbanColumns, newColumn]);
-        }
+        const newId = `custom_${Date.now()}`;
+        const newColumn: KanbanColumn = {
+            id: newId,
+            label: "New Board",
+            hint: "Custom board",
+            color: randomColor(),
+        };
+        updateKanbanBoardColumns(boardId, [...kanbanColumns, newColumn]);
+    };
+
+    const updateColumn = (columnId: string, patch: Partial<KanbanColumn>) => {
+        updateKanbanBoardColumns(
+            boardId,
+            kanbanColumns.map((c) => (c.id === columnId ? { ...c, ...patch } : c)),
+        );
     };
 
     const deleteColumn = (columnId: string) => {
-        if (updateKanbanColumns && kanbanColumns.length > 1) {
+        if (kanbanColumns.length > 1) {
             const updatedColumns = kanbanColumns.filter(col => col.id !== columnId);
-            updateKanbanColumns(updatedColumns);
+            updateKanbanBoardColumns(boardId, updatedColumns);
 
             // Move tasks from deleted column to first column
             const tasksInColumn = byCol(columnId);
@@ -174,7 +187,7 @@ export function EnhancedKanban() {
                 <div className="flex items-end justify-between mb-8">
                     <div>
                         <div className="text-xs uppercase tracking-[0.4em] text-muted-foreground mb-3">
-                            11 · Enhanced Kanban Board
+                            {title ?? `Kanban · ${boardId}`}
                         </div>
                         <h2 className="text-display text-4xl md:text-6xl text-foreground">
                             Move work. <span className="text-muted-foreground">Ship outcomes.</span>
@@ -306,6 +319,7 @@ export function EnhancedKanban() {
                                 }}
                                 onAddTask={() => addNewTask(column.id)}
                                 onDeleteColumn={() => deleteColumn(column.id)}
+                            onUpdateColumn={(patch) => updateColumn(column.id, patch)}
                                 canDelete={kanbanColumns.length > 1}
                                 setDragId={setDragId}
                                 setSelectedCard={setSelectedCard}
@@ -342,6 +356,7 @@ function KanbanColumn({
     onDrop,
     onAddTask,
     onDeleteColumn,
+    onUpdateColumn,
     canDelete,
     setDragId,
     setSelectedCard,
@@ -357,6 +372,7 @@ function KanbanColumn({
     onDrop: () => void;
     onAddTask: () => void;
     onDeleteColumn: () => void;
+    onUpdateColumn: (patch: Partial<KanbanColumn>) => void;
     canDelete: boolean;
     setDragId: (id: string | null) => void;
     setSelectedCard: (task: DailyMissionItem | null) => void;
@@ -367,21 +383,72 @@ function KanbanColumn({
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
-            className={`neu p-4 min-h-[400px] flex flex-col gap-3 transition ${isOver ? "ring-2 ring-blue-500/50 bg-blue-500/5" : ""
+            className={`group neu p-4 min-h-[400px] flex flex-col gap-3 transition ${isOver ? "ring-2 ring-blue-500/50 bg-blue-500/5" : ""
                 }`}
         >
             {/* Column Header */}
             <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                    <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: column.color || "#6b7280" }}
-                    />
-                    <div>
-                        <h3 className="text-sm font-semibold text-foreground">{column.label}</h3>
-                        <p className="text-xs text-muted-foreground">{column.hint}</p>
-                    </div>
-                </div>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <button className="flex items-center gap-3 text-left hover:opacity-90 transition">
+                            <div
+                                className="w-3 h-3 rounded-full ring-1 ring-white/10"
+                                style={{ backgroundColor: column.color || "#6b7280" }}
+                            />
+                            <div>
+                                <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
+                                    {column.label}
+                                    <Edit2 className="h-3 w-3 opacity-0 group-hover:opacity-60 transition" />
+                                </h3>
+                                <p className="text-xs text-muted-foreground">{column.hint}</p>
+                            </div>
+                        </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-3 bg-black/95 border-white/20 space-y-3" align="start">
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Name</label>
+                            <input
+                                type="text"
+                                value={column.label}
+                                onChange={(e) => onUpdateColumn({ label: e.target.value })}
+                                className="w-full px-2 py-1.5 bg-black/60 border border-white/10 rounded-md text-sm text-foreground focus:border-white/30 focus:outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Hint</label>
+                            <input
+                                type="text"
+                                value={column.hint}
+                                onChange={(e) => onUpdateColumn({ hint: e.target.value })}
+                                className="w-full px-2 py-1.5 bg-black/60 border border-white/10 rounded-md text-xs text-foreground focus:border-white/30 focus:outline-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Color</label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {COLORS.map((c) => (
+                                    <button
+                                        key={c}
+                                        onClick={() => onUpdateColumn({ color: c })}
+                                        className={`w-6 h-6 rounded-full ring-2 transition ${
+                                            (column.color || "").toLowerCase() === c.toLowerCase()
+                                                ? "ring-white"
+                                                : "ring-transparent hover:ring-white/40"
+                                        }`}
+                                        style={{ backgroundColor: c }}
+                                    />
+                                ))}
+                                <input
+                                    type="color"
+                                    value={column.color || "#6b7280"}
+                                    onChange={(e) => onUpdateColumn({ color: e.target.value })}
+                                    className="w-6 h-6 rounded-full bg-transparent border-0 cursor-pointer"
+                                    title="Custom color"
+                                />
+                            </div>
+                        </div>
+                    </PopoverContent>
+                </Popover>
 
                 <div className="flex items-center gap-2">
                     <div className="text-xs text-muted-foreground">
@@ -391,7 +458,7 @@ function KanbanColumn({
                         )}
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                         <button
                             onClick={onAddTask}
                             className="p-1 hover:bg-white/10 rounded text-muted-foreground hover:text-foreground transition"

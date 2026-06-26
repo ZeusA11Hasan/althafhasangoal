@@ -61,7 +61,7 @@ function RevenuePage() {
 
                 {/* Kanban Board */}
                 <Suspense fallback={<KanbanLoader />}>
-                    <Kanban />
+                    <Kanban boardId="revenue" title="Revenue · Kanban Board" />
                 </Suspense>
 
                 {/* Footer */}
