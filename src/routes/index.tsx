@@ -68,7 +68,7 @@ function Index() {
         <DailyExecution />
         <Suspense fallback={<ChartLoader />}><TaskHoursChart /></Suspense>
         <Suspense fallback={<PremiumSectionLoader />}><Calendar /></Suspense>
-        <Suspense fallback={<KanbanLoader />}><Kanban /></Suspense>
+        <Suspense fallback={<KanbanLoader />}><Kanban boardId="home" title="Home · Kanban Board" /></Suspense>
         <Suspense fallback={<PremiumSectionLoader />}><Timeline /></Suspense>
         <Suspense fallback={<ChartLoader />}><Productivity /></Suspense>
         <Suspense fallback={<ChartLoader />}><Heatmap /></Suspense>
